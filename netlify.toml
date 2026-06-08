@@ -1,0 +1,35 @@
+# netlify.toml
+# Base config — Opus completes this in Phase 3
+
+[build]
+  publish = "public"
+  functions = "netlify/functions"
+
+[dev]
+  port = 8888
+  targetPort = 3000
+
+# Function-specific timeout overrides
+# Default Netlify timeout is 10s. Scheduler needs more.
+[functions."scheduler"]
+  timeout = 26  # Max on Netlify paid tier
+
+[functions."analyze-questions"]
+  timeout = 20  # Gemini vision calls can be slow
+
+[functions."generate-post"]
+  timeout = 20
+
+# Security headers — Opus fills these in Phase 3
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+# Redirect LinkedIn OAuth callback
+[[redirects]]
+  from = "/auth/callback"
+  to = "/.netlify/functions/callback"
+  status = 200

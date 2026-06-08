@@ -1,0 +1,21 @@
+{
+  "name": "vista-agent",
+  "version": "0.1.0",
+  "description": "VISTA — LinkedIn post scheduling agent with certificate intelligence",
+  "type": "module",
+  "scripts": {
+    "dev": "netlify dev",
+    "build": "echo 'No build step — vanilla JS'",
+    "test:functions": "node scripts/test-functions.js"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.21.0",
+    "@supabase/supabase-js": "^2.45.0"
+  },
+  "devDependencies": {
+    "netlify-cli": "^17.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

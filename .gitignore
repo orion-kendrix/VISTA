@@ -1,0 +1,16 @@
+# Environment
+.env
+.env.local
+
+# Dependencies
+node_modules/
+
+# Netlify
+.netlify/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
