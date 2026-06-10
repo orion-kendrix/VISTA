@@ -1,4 +1,4 @@
-# Antigravity Prompt — Claude Opus 4.8
+# Claude Opus 4.8
 # Phase 0: Database Schema
 # Copy everything below this line and paste it as your first message in Antigravity.
 
