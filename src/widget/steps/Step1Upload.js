@@ -29,7 +29,11 @@ export function createStep1Upload(ctx) {
   const nextBtn = el.querySelector('[data-slot="next"]');
 
   // ── Events ───────────────────────────────────────────────────────────────
-  input.addEventListener('change', () => handleFile(input.files[0]));
+  input.addEventListener('change', () => {
+    const file = input.files[0];
+    input.value = ''; // so picking the SAME file again still fires 'change'
+    handleFile(file);
+  });
   drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('vista-dragover'); });
   drop.addEventListener('dragleave', () => drop.classList.remove('vista-dragover'));
   drop.addEventListener('drop', (e) => {
@@ -57,7 +61,8 @@ export function createStep1Upload(ctx) {
       const dataUrl = await readAsDataURL(processed);
 
       // New upload invalidates everything downstream (questions/post belong
-      // to the old image).
+      // to the old image) — including stepper progress, or the user could
+      // jump straight to Preview and generate a post from stale/empty answers.
       ctx.setState({
         image: {
           base64: dataUrl.split(',')[1],
@@ -71,11 +76,13 @@ export function createStep1Upload(ctx) {
         answers: ['', '', '', '', ''],
         postText: '',
         postStale: false,
+        maxReachedIndex: 0,
       });
 
       renderFileCard();
       nextBtn.disabled = false;
       nextBtn.textContent = 'Analyse with Gemini →';
+      ctx.refresh(); // re-render the stepper so downstream pills lock again
     } catch (err) {
       console.error('[VISTA] Upload failed:', err);
       renderError('Could not read that file. Try a different image.');
@@ -118,7 +125,10 @@ export function createStep1Upload(ctx) {
           <button class="vista-file-remove" type="button">Remove</button>
         </div>
       </div>`;
-    fileSlot.querySelector('.vista-file-remove').addEventListener('click', clearFile);
+    fileSlot.querySelector('.vista-file-remove').addEventListener('click', () => {
+      clearFile();
+      ctx.refresh(); // stepper must lock downstream steps again
+    });
     drop.style.display = 'none';
   }
 
@@ -128,7 +138,7 @@ export function createStep1Upload(ctx) {
   }
 
   function clearFile() {
-    ctx.setState({ image: null, questions: [], answers: ['', '', '', '', ''], postText: '', postStale: false });
+    ctx.setState({ image: null, questions: [], answers: ['', '', '', '', ''], postText: '', postStale: false, maxReachedIndex: 0 });
     fileSlot.innerHTML = '';
     drop.style.display = '';
     input.value = '';

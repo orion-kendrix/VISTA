@@ -75,7 +75,7 @@ async function post(url, payload) {
     throw new AuthRequiredError();
   }
   if (!res.ok) {
-    let detail = `${res.status}`;
+    let detail = `The server returned an error (${res.status}). Please retry.`;
     try { detail = (await res.json()).error || detail; } catch { /* non-JSON body */ }
     throw new Error(detail);
   }

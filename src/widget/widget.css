@@ -174,16 +174,18 @@
 .vista-close:hover { color: var(--v-red); border-color: var(--v-red-dim); background: var(--v-red-dim); }
 
 /* ── Stepper ── */
+/* Spacing is deliberately tight: 4 pills + labels + connectors must fit the
+   408px panel on wide system fonts (Segoe UI overflowed at 16px padding). */
 .vista-stepper {
   display: flex; align-items: center;
-  padding: 11px 16px;
+  padding: 11px 10px;
   border-bottom: 1px solid var(--v-border);
   flex-shrink: 0;
 }
 .vista-step-pill {
-  display: flex; align-items: center; gap: 6px;
+  display: flex; align-items: center; gap: 5px;
   font-size: 11px; font-weight: 600; color: var(--v-subtle);
-  padding: 3px 5px; border-radius: 7px;
+  padding: 3px; border-radius: 7px;
   transition: color .2s;
   white-space: nowrap;
 }
@@ -211,7 +213,7 @@
   color: var(--v-green);
 }
 .vista-step-connector {
-  flex: 1; height: 1.5px; margin: 0 4px;
+  flex: 1; height: 1.5px; margin: 0 3px; min-width: 3px;
   background: var(--v-border);
   position: relative; overflow: hidden;
   border-radius: 2px;

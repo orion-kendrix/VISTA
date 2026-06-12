@@ -43,6 +43,7 @@ export function initVistaWidget(options = {}) {
   panel.className = 'vista-panel';
   panel.setAttribute('role', 'dialog');
   panel.setAttribute('aria-label', 'VISTA — LinkedIn post agent');
+  panel.setAttribute('tabindex', '-1'); // focusable so setOpen() can move focus in
 
   const header = document.createElement('div');
   header.className = 'vista-header';
@@ -60,6 +61,7 @@ export function initVistaWidget(options = {}) {
   // ── Mode wiring ─────────────────────────────────────────────────────────
   let fab = null;
   let isOpen = mode === 'inline'; // inline mode is always "open"
+  let escHandler = null;          // kept so destroy() can unhook it
 
   function setOpen(next) {
     if (mode === 'inline') return; // inline can't be closed
@@ -88,9 +90,10 @@ export function initVistaWidget(options = {}) {
     header.appendChild(closeBtn);
 
     // Escape closes; clicks inside the panel never bubble out to host handlers.
-    document.addEventListener('keydown', (e) => {
+    escHandler = (e) => {
       if (e.key === 'Escape' && isOpen) setOpen(false);
-    });
+    };
+    document.addEventListener('keydown', escHandler);
 
     root.appendChild(fab);
   } else {
@@ -129,6 +132,9 @@ export function initVistaWidget(options = {}) {
     close: () => setOpen(false),
     toggle: () => setOpen(!isOpen),
     reset: () => form.reset(),
-    destroy: () => root.remove(),
+    destroy: () => {
+      if (escHandler) document.removeEventListener('keydown', escHandler);
+      root.remove();
+    },
   };
 }

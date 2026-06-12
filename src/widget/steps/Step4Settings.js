@@ -147,11 +147,17 @@ export function createStep4Settings(ctx) {
 
   async function submit() {
     const phoneEl = el.querySelector('[data-slot="phone"]');
+    const ccEl = el.querySelector('[data-slot="cc"]');
     const dtEl = el.querySelector('[data-slot="dt"]');
     const btn = el.querySelector('[data-slot="submit"]');
 
     const phone = ctx.state.whatsappNumber;
     if (!/^\d{8,14}$/.test(phone)) return flagInvalid(phoneEl);
+    // Users type "91", "+91" or "0091" — normalise to E.164 here because the
+    // backend strictly validates /^\+\d{8,15}$/ and would 400 otherwise.
+    const ccDigits = (ctx.state.whatsappCc || '').replace(/\D/g, '').replace(/^0+/, '');
+    const fullNumber = `+${ccDigits}${phone}`;
+    if (!/^\+\d{8,15}$/.test(fullNumber)) return flagInvalid(ccEl);
     if (!ctx.state.scheduledAt || new Date(ctx.state.scheduledAt) < new Date(Date.now() + 2 * 60 * 1000)) {
       return flagInvalid(dtEl);
     }
@@ -164,7 +170,7 @@ export function createStep4Settings(ctx) {
         postText: ctx.state.postText,
         imageBase64: ctx.state.image?.base64 || null,
         imageMimeType: ctx.state.image?.mimeType || null,
-        whatsappNumber: `${ctx.state.whatsappCc}${phone}`,
+        whatsappNumber: fullNumber,
         scheduledAt: new Date(ctx.state.scheduledAt).toISOString(),
         microSettings: ctx.state.microSettings,
         questions: ctx.state.questions,

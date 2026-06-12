@@ -21,13 +21,10 @@
 [functions]
   node_bundler = "esbuild"
 
-# Gemini vision + LinkedIn publishing can be slow; defaults are too tight.
-[functions."scheduler"]
-  timeout = 26
-[functions."analyze-questions"]
-  timeout = 20
-[functions."generate-post"]
-  timeout = 20
+# NOTE on timeouts: function timeout is NOT configurable from netlify.toml
+# (unsupported keys can fail deploy validation). The default is 10 s, which
+# gemini-2.5-flash fits comfortably; if publishing ever needs more, raise the
+# limit from the Netlify dashboard / support (max 26 s).
 
 # The widget's ES modules are fetched cross-origin when embedded on Vortex —
 # module scripts REQUIRE CORS headers or the browser refuses to run them.

@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "widget-mock",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["scripts/dev-server.js", "3999"],
+      "port": 3999
+    }
+  ]
+}

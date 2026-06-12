@@ -95,6 +95,9 @@ export function createStep3Preview(ctx) {
     const len = ta.value.length;
     const words = ta.value.trim().split(/\s+/).filter(Boolean).length;
     span.innerHTML = `${words} words · <span class="${len > LINKEDIN_CHAR_LIMIT - 200 ? 'vista-over' : ''}">${len}/${LINKEDIN_CHAR_LIMIT}</span>`;
+    // The backend (and LinkedIn) hard-reject >3000 chars — stop it here.
+    const next = el.querySelector('[data-slot="next"]');
+    if (next) next.disabled = len > LINKEDIN_CHAR_LIMIT;
   }
 
   async function copyPost() {
