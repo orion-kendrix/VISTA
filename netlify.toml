@@ -1,34 +1,56 @@
-# netlify.toml
-# Base config — Opus completes this in Phase 3
+# netlify.toml — Phase 3 (integration) final config.
+#
+# Deploy layout: the widget is authored in src/, but must be SERVED at
+# /widget/* so embed.js works from a single script tag on Vortex. The build
+# command copies src/widget and src/shared into public/ side by side, which
+# preserves the `../shared/…` relative imports inside the widget modules.
 
 [build]
   publish = "public"
-  functions = "netlify/functions"
+  command = "mkdir -p public/widget public/shared && cp -r src/widget/. public/widget/ && cp -r src/shared/. public/shared/"
 
+# `netlify dev` serves the repo root statically AND runs the functions —
+# one command for full local testing:
+#   http://localhost:8888/src/widget/            (widget, mock mode)
+#   http://localhost:8888/src/widget/?live       (widget → real functions)
 [dev]
+  framework = "#static"
+  publish = "."
   port = 8888
-  targetPort = 3000
 
-# Function-specific timeout overrides
-# Default Netlify timeout is 10s. Scheduler needs more.
+[functions]
+  node_bundler = "esbuild"
+
+# Gemini vision + LinkedIn publishing can be slow; defaults are too tight.
 [functions."scheduler"]
-  timeout = 26  # Max on Netlify paid tier
-
+  timeout = 26
 [functions."analyze-questions"]
-  timeout = 20  # Gemini vision calls can be slow
-
+  timeout = 20
 [functions."generate-post"]
   timeout = 20
 
-# Security headers — Opus fills these in Phase 3
+# The widget's ES modules are fetched cross-origin when embedded on Vortex —
+# module scripts REQUIRE CORS headers or the browser refuses to run them.
+[[headers]]
+  for = "/widget/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Cache-Control = "public, max-age=300"
+
+[[headers]]
+  for = "/shared/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Cache-Control = "public, max-age=300"
+
 [[headers]]
   for = "/*"
   [headers.values]
-    X-Frame-Options = "DENY"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
 
-# Redirect LinkedIn OAuth callback
+# Friendly OAuth redirect URI (matches LINKEDIN_REDIRECT_URI if you prefer
+# the short form).
 [[redirects]]
   from = "/auth/callback"
   to = "/.netlify/functions/callback"

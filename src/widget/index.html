@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<!--
+  VISTA — standalone widget test page (Phase 1, RULES.md R5)
+  ───────────────────────────────────────────────────────────
+  ES modules don't load over file:// — serve this over HTTP:
+
+    Option A (whole stack):   netlify dev        → http://localhost:8888/src/widget/
+    Option B (widget only):   npx -y serve .     → http://localhost:3000/src/widget/
+                              (run from the repo root)
+
+  Modes:
+    default      → MOCK data (no backend needed, tests every UI state)
+    ?live        → real Netlify functions (use with `netlify dev`)
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VISTA — Widget Test Page</title>
+
+  <!-- Mode flag must be set BEFORE the widget module loads -->
+  <script>
+    window.VISTA_USE_MOCKS = !new URLSearchParams(location.search).has('live');
+  </script>
+
+  <!-- Client-side compression (architecture choice; widget has a canvas fallback) -->
+  <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
+
+  <link rel="stylesheet" href="./widget.css" />
+
+  <style>
+    * { margin: 0; box-sizing: border-box; }
+    body {
+      min-height: 100vh;
+      font-family: 'Space Grotesk', system-ui, sans-serif;
+      background: #080810;
+      color: #f1f5f9;
+      background-image:
+        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(124,58,237,.14), transparent),
+        radial-gradient(ellipse 60% 40% at 85% 85%, rgba(56,189,248,.07), transparent);
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+    .stage { text-align: center; max-width: 460px; }
+    .stage h1 { font-size: 26px; letter-spacing: .04em; }
+    .stage h1 span { background: linear-gradient(135deg,#7c3aed,#38bdf8); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .stage p { color: #8b93a7; font-size: 13.5px; line-height: 1.6; margin-top: 10px; }
+    .mode {
+      display: inline-flex; gap: 6px; align-items: center;
+      margin-top: 18px; padding: 5px 13px;
+      font-size: 11px; font-weight: 700; letter-spacing: .08em;
+      border-radius: 20px; border: 1px solid;
+    }
+    .mode.mock { color: #f59e0b; border-color: rgba(245,158,11,.4); background: rgba(245,158,11,.08); }
+    .mode.live { color: #10b981; border-color: rgba(16,185,129,.4); background: rgba(16,185,129,.08); }
+    .mode a { color: inherit; }
+  </style>
+</head>
+<body>
+  <div class="stage">
+    <h1>VISTA <span>Widget Lab</span></h1>
+    <p>This page simulates a host site (like Vortex). The widget lives in the
+       bottom-right corner — click the V to run the full 4-step flow.</p>
+    <div id="mode-badge" class="mode"></div>
+  </div>
+
+  <script type="module">
+    import { initVistaWidget } from './FABWidget.js';
+
+    const badge = document.getElementById('mode-badge');
+    if (window.VISTA_USE_MOCKS) {
+      badge.className = 'mode mock';
+      badge.innerHTML = '● MOCK MODE — <a href="?live">switch to live</a>';
+    } else {
+      badge.className = 'mode live';
+      badge.innerHTML = '● LIVE MODE — hitting /.netlify/functions/*';
+    }
+
+    const vista = initVistaWidget();
+    // Expose for console poking during development.
+    window.vista = vista;
+  </script>
+</body>
+</html>

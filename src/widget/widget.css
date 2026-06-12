@@ -1,0 +1,779 @@
+/* ============================================================================
+   VISTA — widget.css
+   Phase 1 (upgraded). All colours live in the token block below; every rule
+   beneath it uses var(--v-*) only (per RULES.md: no hardcoded hex outside
+   the token definitions).
+   Everything is scoped under .vista-root and uses vista- prefixed classes so
+   the widget can be embedded in any host page (Vortex) without style bleed.
+   ========================================================================== */
+
+.vista-root {
+  /* ── Palette (Vortex-derived: near-black ground, purple CTA, cyan info) ── */
+  --v-bg:          #0a0a14;
+  --v-surface:     rgba(17, 17, 31, 0.92);
+  --v-surface-2:   #181829;
+  --v-surface-3:   #20203a;
+  --v-border:      rgba(255, 255, 255, 0.08);
+  --v-border-2:    rgba(255, 255, 255, 0.14);
+  --v-purple:      #7c3aed;
+  --v-purple-2:    #a78bfa;
+  --v-purple-dim:  rgba(124, 58, 237, 0.16);
+  --v-purple-glow: rgba(124, 58, 237, 0.45);
+  --v-blue:        #38bdf8;
+  --v-blue-dim:    rgba(56, 189, 248, 0.10);
+  --v-blue-border: rgba(56, 189, 248, 0.25);
+  --v-green:       #10b981;
+  --v-green-dim:   rgba(16, 185, 129, 0.12);
+  --v-green-border:rgba(16, 185, 129, 0.35);
+  --v-red:         #ef4444;
+  --v-red-dim:     rgba(239, 68, 68, 0.12);
+  --v-amber:       #f59e0b;
+  --v-text:        #f1f5f9;
+  --v-muted:       #8b93a7;
+  --v-subtle:      #475069;
+  --v-grad:        linear-gradient(135deg, var(--v-purple), var(--v-blue));
+  --v-grad-soft:   linear-gradient(135deg, rgba(124,58,237,.55), rgba(56,189,248,.30));
+  --v-shadow:      0 24px 80px rgba(0, 0, 0, 0.6);
+  --v-shadow-fab:  0 8px 32px rgba(0, 0, 0, 0.55);
+
+  /* ── Geometry & motion ── */
+  --v-radius:      16px;
+  --v-radius-sm:   10px;
+  --v-radius-xs:   7px;
+  --v-ease:        cubic-bezier(0.32, 0.72, 0, 1);
+  --v-z:           2147483000; /* Intercom-style: above everything on host page */
+
+  /* Picks up Space Grotesk if the host (Vortex) loads it; degrades to system */
+  --v-font: 'Space Grotesk', ui-sans-serif, system-ui, -apple-system,
+            'Segoe UI', Roboto, sans-serif;
+}
+
+/* ── Root reset: defend against host-page styles ─────────────────────────── */
+.vista-root, .vista-root * , .vista-root *::before, .vista-root *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: var(--v-font);
+}
+.vista-root button { background: none; border: none; cursor: pointer; color: inherit; font: inherit; }
+.vista-root input, .vista-root textarea, .vista-root select { font: inherit; color: inherit; }
+.vista-root img { display: block; max-width: 100%; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   FAB
+   ══════════════════════════════════════════════════════════════════════════ */
+.vista-fab {
+  position: fixed;
+  bottom: 28px; right: 28px;
+  z-index: var(--v-z);
+  width: 58px; height: 58px;
+  border-radius: 18px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--v-bg);
+  box-shadow: var(--v-shadow-fab);
+  transition: transform .22s var(--v-ease);
+  isolation: isolate;
+}
+/* Rotating conic gradient ring — the signature element */
+.vista-fab::before {
+  content: '';
+  position: absolute; inset: -2px;
+  border-radius: 20px;
+  background: conic-gradient(from var(--v-fab-angle, 0deg),
+              var(--v-purple), var(--v-blue), var(--v-purple));
+  z-index: -1;
+  animation: vista-ring 5s linear infinite;
+}
+@property --v-fab-angle { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
+@keyframes vista-ring { to { --v-fab-angle: 360deg; } }
+/* Fallback rotation for browsers without @property */
+@supports not (background: conic-gradient(from var(--v-fab-angle, 0deg), red, blue)) {
+  .vista-fab::before { animation: vista-ring-spin 5s linear infinite; }
+  @keyframes vista-ring-spin { to { transform: rotate(360deg); } }
+}
+.vista-fab::after { /* inner mask to create the ring effect */
+  content: '';
+  position: absolute; inset: 0;
+  border-radius: 18px;
+  background: var(--v-bg);
+  z-index: -1;
+}
+.vista-fab:hover { transform: scale(1.07) translateY(-2px); }
+.vista-fab.vista-open { transform: rotate(135deg); }
+.vista-fab.vista-open:hover { transform: rotate(135deg) scale(1.05); }
+.vista-fab svg { width: 26px; height: 26px; position: relative; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   PANEL
+   ══════════════════════════════════════════════════════════════════════════ */
+.vista-panel {
+  position: fixed;
+  bottom: 98px; right: 28px;
+  z-index: var(--v-z);
+  width: 408px;
+  max-height: min(700px, calc(100vh - 130px));
+  display: flex; flex-direction: column;
+  border-radius: var(--v-radius);
+  /* Gradient border trick: two backgrounds, transparent border */
+  border: 1px solid transparent;
+  background:
+    linear-gradient(var(--v-surface), var(--v-surface)) padding-box,
+    var(--v-grad-soft) border-box;
+  backdrop-filter: blur(20px) saturate(1.3);
+  -webkit-backdrop-filter: blur(20px) saturate(1.3);
+  box-shadow: var(--v-shadow);
+  overflow: hidden;
+  transform-origin: bottom right;
+  transform: scale(.94) translateY(14px);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform .3s var(--v-ease), opacity .22s ease;
+  color: var(--v-text);
+}
+.vista-panel.vista-open { transform: none; opacity: 1; pointer-events: auto; }
+
+/* Mobile: bottom sheet */
+@media (max-width: 480px) {
+  .vista-panel {
+    right: 10px; left: 10px; bottom: 92px;
+    width: auto;
+    max-height: calc(100vh - 110px);
+  }
+  .vista-fab { bottom: 20px; right: 20px; }
+}
+
+/* ── Header ── */
+.vista-header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--v-border);
+  flex-shrink: 0;
+}
+.vista-logo-tile {
+  width: 32px; height: 32px; flex-shrink: 0;
+  border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--v-bg);
+  border: 1px solid var(--v-border-2);
+}
+.vista-logo-tile svg { width: 16px; height: 16px; }
+.vista-header-titles { flex: 1; min-width: 0; }
+.vista-header-titles h2 {
+  font-size: 13px; font-weight: 700; letter-spacing: .14em;
+}
+.vista-header-titles p { font-size: 11px; color: var(--v-muted); margin-top: 2px; }
+.vista-close {
+  width: 28px; height: 28px; flex-shrink: 0;
+  border-radius: 8px;
+  border: 1px solid var(--v-border);
+  color: var(--v-muted);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px; line-height: 1;
+  transition: all .15s;
+}
+.vista-close:hover { color: var(--v-red); border-color: var(--v-red-dim); background: var(--v-red-dim); }
+
+/* ── Stepper ── */
+.vista-stepper {
+  display: flex; align-items: center;
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--v-border);
+  flex-shrink: 0;
+}
+.vista-step-pill {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 11px; font-weight: 600; color: var(--v-subtle);
+  padding: 3px 5px; border-radius: 7px;
+  transition: color .2s;
+  white-space: nowrap;
+}
+.vista-step-pill[data-reachable="true"] { cursor: pointer; }
+.vista-step-pill.vista-active { color: var(--v-purple-2); }
+.vista-step-pill.vista-done   { color: var(--v-green); }
+.vista-step-dot {
+  width: 20px; height: 20px; flex-shrink: 0;
+  border-radius: 50%;
+  border: 1.5px solid var(--v-border-2);
+  background: var(--v-surface-2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 700;
+  transition: all .25s var(--v-ease);
+}
+.vista-step-pill.vista-active .vista-step-dot {
+  border-color: var(--v-purple);
+  background: var(--v-purple-dim);
+  color: var(--v-purple-2);
+  box-shadow: 0 0 0 3px var(--v-purple-dim);
+}
+.vista-step-pill.vista-done .vista-step-dot {
+  border-color: var(--v-green-border);
+  background: var(--v-green-dim);
+  color: var(--v-green);
+}
+.vista-step-connector {
+  flex: 1; height: 1.5px; margin: 0 4px;
+  background: var(--v-border);
+  position: relative; overflow: hidden;
+  border-radius: 2px;
+}
+.vista-step-connector::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: var(--v-grad);
+  transform: scaleX(0); transform-origin: left;
+  transition: transform .4s var(--v-ease);
+}
+.vista-step-connector.vista-done::after { transform: scaleX(1); }
+
+/* ── Body ── */
+.vista-body {
+  flex: 1;
+  overflow-y: auto; overflow-x: hidden;
+  padding: 18px 16px 20px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--v-surface-3) transparent;
+}
+.vista-body::-webkit-scrollbar { width: 5px; }
+.vista-body::-webkit-scrollbar-thumb { background: var(--v-surface-3); border-radius: 4px; }
+
+.vista-step-view { animation: vista-step-in .24s var(--v-ease); }
+@keyframes vista-step-in {
+  from { opacity: 0; transform: translateX(12px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SHARED PIECES
+   ══════════════════════════════════════════════════════════════════════════ */
+.vista-btn {
+  display: flex; align-items: center; justify-content: center; gap: 7px;
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 11px;
+  font-size: 13px; font-weight: 600; letter-spacing: .02em;
+  transition: transform .12s ease, box-shadow .2s, opacity .2s, background .2s;
+  position: relative; overflow: hidden;
+}
+.vista-btn:active { transform: scale(.98); }
+.vista-btn:disabled { opacity: .4; cursor: not-allowed; }
+.vista-btn-primary {
+  color: var(--v-text);
+  background: var(--v-grad);
+  box-shadow: 0 4px 18px var(--v-purple-glow);
+}
+/* shine sweep on hover */
+.vista-btn-primary::after {
+  content: '';
+  position: absolute; top: 0; bottom: 0; left: -60%;
+  width: 40%;
+  background: linear-gradient(100deg, transparent, rgba(255,255,255,.18), transparent);
+  transform: skewX(-20deg);
+  transition: left .45s ease;
+}
+.vista-btn-primary:hover:not(:disabled)::after { left: 120%; }
+.vista-btn-secondary {
+  background: var(--v-surface-2);
+  color: var(--v-muted);
+  border: 1px solid var(--v-border);
+  width: auto;
+}
+.vista-btn-secondary:hover { color: var(--v-text); background: var(--v-surface-3); }
+.vista-btn-row { display: flex; gap: 8px; margin-top: 16px; }
+.vista-btn-row .vista-btn-primary { flex: 1; }
+.vista-btn-row .vista-btn-secondary { flex: 0 0 auto; padding: 12px 14px; }
+
+.vista-spinner {
+  width: 15px; height: 15px; flex-shrink: 0;
+  border-radius: 50%;
+  border: 2px solid var(--v-border-2);
+  border-top-color: var(--v-text);
+  animation: vista-spin .7s linear infinite;
+}
+@keyframes vista-spin { to { transform: rotate(360deg); } }
+
+.vista-loading {
+  text-align: center;
+  padding: 36px 16px;
+}
+.vista-loading .vista-spinner {
+  width: 34px; height: 34px; border-width: 3px;
+  border-top-color: var(--v-purple-2);
+  margin: 0 auto 16px;
+}
+.vista-loading p  { font-size: 13px; color: var(--v-text); font-weight: 500; }
+.vista-loading small {
+  display: block; margin-top: 5px;
+  font-size: 11.5px; color: var(--v-muted);
+  min-height: 15px;
+  transition: opacity .3s;
+}
+
+/* Error banner with retry */
+.vista-error {
+  display: flex; align-items: flex-start; gap: 10px;
+  background: var(--v-red-dim);
+  border: 1px solid var(--v-red-dim);
+  border-radius: var(--v-radius-sm);
+  padding: 12px;
+  margin-bottom: 12px;
+  font-size: 12px; line-height: 1.5; color: var(--v-text);
+}
+.vista-error b { display: block; color: var(--v-red); font-size: 12px; margin-bottom: 2px; }
+.vista-error button {
+  margin-left: auto; flex-shrink: 0;
+  font-size: 11px; font-weight: 600; color: var(--v-red);
+  padding: 4px 10px;
+  border: 1px solid var(--v-red-dim);
+  border-radius: 7px;
+}
+
+/* Auth gate (shown when a function returns 401) */
+.vista-auth-gate {
+  text-align: center;
+  padding: 28px 18px;
+  border: 1px dashed var(--v-blue-border);
+  border-radius: var(--v-radius-sm);
+  background: var(--v-blue-dim);
+}
+.vista-auth-gate h4 { font-size: 14px; margin-bottom: 6px; }
+.vista-auth-gate p { font-size: 12px; color: var(--v-muted); margin-bottom: 14px; line-height: 1.5; }
+
+.vista-hint { font-size: 10.5px; color: var(--v-subtle); text-align: center; margin-top: 12px; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   STEP 1 — UPLOAD
+   ══════════════════════════════════════════════════════════════════════════ */
+.vista-dropzone {
+  position: relative;
+  border: 1.5px dashed var(--v-purple-glow);
+  border-radius: 13px;
+  background: var(--v-surface-2);
+  padding: 34px 20px;
+  text-align: center;
+  transition: all .2s;
+  cursor: pointer;
+  overflow: hidden;
+}
+.vista-dropzone:hover, .vista-dropzone.vista-dragover {
+  border-color: var(--v-purple);
+  background: var(--v-purple-dim);
+}
+.vista-dropzone.vista-dragover { transform: scale(1.01); }
+.vista-dropzone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.vista-dropzone .vista-drop-emoji { font-size: 34px; margin-bottom: 10px; }
+.vista-dropzone h3 { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+.vista-dropzone p  { font-size: 12px; color: var(--v-muted); }
+.vista-drop-chip {
+  display: inline-block; margin-top: 13px;
+  font-size: 10px; font-weight: 600; letter-spacing: .05em;
+  color: var(--v-blue);
+  padding: 4px 11px;
+  border: 1px solid var(--v-blue-border);
+  border-radius: 20px;
+  background: var(--v-blue-dim);
+}
+
+.vista-file-card {
+  border: 1px solid var(--v-border);
+  border-radius: 13px;
+  background: var(--v-surface-2);
+  overflow: hidden;
+  margin-bottom: 12px;
+  animation: vista-step-in .25s var(--v-ease);
+}
+.vista-file-card img { width: 100%; height: 150px; object-fit: cover; }
+.vista-file-card .vista-file-pdf {
+  height: 110px; display: flex; align-items: center; justify-content: center;
+  font-size: 40px; background: var(--v-surface-3);
+}
+.vista-file-meta {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 11px 13px;
+}
+.vista-file-name { font-size: 12.5px; font-weight: 600; word-break: break-all; }
+.vista-file-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  margin-top: 6px;
+  font-size: 10px; font-weight: 600; color: var(--v-green);
+  padding: 3px 9px;
+  border: 1px solid var(--v-green-border);
+  border-radius: 20px;
+  background: var(--v-green-dim);
+}
+.vista-file-remove { font-size: 11px; font-weight: 600; color: var(--v-red); flex-shrink: 0; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   STEP 2 — QUESTIONS
+   ══════════════════════════════════════════════════════════════════════════ */
+.vista-ai-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 10.5px; font-weight: 600;
+  color: var(--v-blue);
+  padding: 4px 10px;
+  border: 1px solid var(--v-blue-border);
+  border-radius: 20px;
+  background: var(--v-blue-dim);
+  margin-bottom: 14px;
+}
+.vista-ai-dot {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--v-blue);
+  animation: vista-blink 1.8s ease infinite;
+}
+@keyframes vista-blink { 50% { opacity: .25; } }
+
+.vista-qbar { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.vista-qbar-track { flex: 1; height: 4px; border-radius: 3px; background: var(--v-surface-3); overflow: hidden; }
+.vista-qbar-fill  { height: 100%; border-radius: 3px; background: var(--v-grad); transition: width .4s var(--v-ease); }
+.vista-qbar-label { font-size: 11px; color: var(--v-muted); white-space: nowrap; }
+
+.vista-qcard {
+  border: 1px solid var(--v-border);
+  border-radius: var(--v-radius-sm);
+  background: var(--v-surface-2);
+  padding: 12px;
+  margin-bottom: 10px;
+  transition: border-color .2s;
+  animation: vista-step-in .3s var(--v-ease) backwards; /* delay set in JS for stagger */
+}
+.vista-qcard:focus-within { border-color: var(--v-purple-glow); }
+.vista-qhead {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 7px;
+}
+.vista-qnum {
+  width: 19px; height: 19px; flex-shrink: 0;
+  border-radius: 50%;
+  border: 1px solid var(--v-purple-glow);
+  background: var(--v-purple-dim);
+  color: var(--v-purple-2);
+  font-size: 10px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .2s;
+}
+.vista-qcard.vista-answered .vista-qnum {
+  border-color: var(--v-green-border);
+  background: var(--v-green-dim);
+  color: var(--v-green);
+}
+.vista-qhead span { font-size: 10px; font-weight: 700; letter-spacing: .07em; color: var(--v-muted); text-transform: uppercase; }
+.vista-qtext { font-size: 12.5px; line-height: 1.55; margin-bottom: 9px; }
+.vista-qcard textarea {
+  width: 100%;
+  min-height: 60px;
+  resize: none;
+  background: var(--v-bg);
+  border: 1px solid var(--v-border);
+  border-radius: var(--v-radius-xs);
+  padding: 9px 11px;
+  font-size: 12px; line-height: 1.55;
+  outline: none;
+  transition: border-color .2s, height .15s;
+}
+.vista-qcard textarea::placeholder { color: var(--v-subtle); }
+.vista-qcard textarea:focus { border-color: var(--v-purple-glow); }
+
+/* skeleton shimmer while Gemini thinks */
+.vista-skel {
+  border-radius: var(--v-radius-sm);
+  background: var(--v-surface-2);
+  height: 96px;
+  margin-bottom: 10px;
+  position: relative; overflow: hidden;
+}
+.vista-skel::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(100deg, transparent 30%, var(--v-surface-3) 50%, transparent 70%);
+  animation: vista-shimmer 1.4s ease infinite;
+}
+@keyframes vista-shimmer { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   STEP 3 — PREVIEW (LinkedIn card)
+   ══════════════════════════════════════════════════════════════════════════ */
+.vista-preview-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 11px;
+}
+.vista-preview-head h3 { font-size: 13.5px; font-weight: 700; }
+.vista-edit-btn {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 11px; font-weight: 600;
+  color: var(--v-blue);
+  padding: 5px 10px;
+  border-radius: 7px;
+  border: 1px solid var(--v-blue-border);
+  background: var(--v-blue-dim);
+  transition: background .15s;
+}
+
+.vista-li-card {
+  border: 1px solid var(--v-border);
+  border-radius: 13px;
+  background: var(--v-surface-2);
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+.vista-li-head {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 14px;
+}
+.vista-li-avatar {
+  width: 38px; height: 38px; flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--v-grad);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 700;
+}
+.vista-li-name { font-size: 12.5px; font-weight: 700; }
+.vista-li-meta { font-size: 11px; color: var(--v-muted); margin-top: 1px; }
+.vista-li-img { position: relative; border-top: 1px solid var(--v-border); border-bottom: 1px solid var(--v-border); }
+.vista-li-img img { width: 100%; max-height: 130px; object-fit: cover; }
+.vista-li-text {
+  padding: 12px 14px;
+  font-size: 12px; line-height: 1.65;
+  white-space: pre-wrap;
+  max-height: 170px; overflow-y: auto;
+  scrollbar-width: thin; scrollbar-color: var(--v-surface-3) transparent;
+}
+.vista-li-textarea {
+  width: 100%;
+  display: none;
+  background: var(--v-bg);
+  border: none; outline: none; resize: none;
+  padding: 12px 14px;
+  font-size: 12px; line-height: 1.65;
+  min-height: 180px;
+}
+.vista-li-card.vista-editing .vista-li-text { display: none; }
+.vista-li-card.vista-editing .vista-li-textarea { display: block; }
+/* fake reaction bar for realism */
+.vista-li-foot {
+  display: flex; gap: 16px;
+  padding: 9px 14px;
+  border-top: 1px solid var(--v-border);
+  font-size: 11px; color: var(--v-subtle);
+}
+.vista-post-meta {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 11px; color: var(--v-muted);
+}
+.vista-post-meta .vista-over { color: var(--v-amber); font-weight: 600; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   STEP 4 — SETTINGS & SCHEDULE
+   ══════════════════════════════════════════════════════════════════════════ */
+.vista-section { margin-bottom: 18px; }
+.vista-section-label {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 10px; font-weight: 700; letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--v-muted);
+  margin-bottom: 10px;
+}
+.vista-section-label::after { content: ''; flex: 1; height: 1px; background: var(--v-border); }
+
+.vista-field { margin-bottom: 10px; }
+.vista-field-label { font-size: 11px; font-weight: 600; color: var(--v-muted); margin-bottom: 5px; }
+
+.vista-input, .vista-select {
+  width: 100%;
+  background: var(--v-surface-2);
+  border: 1px solid var(--v-border);
+  border-radius: var(--v-radius-xs);
+  padding: 9px 11px;
+  font-size: 12.5px;
+  outline: none;
+  transition: border-color .2s;
+  color-scheme: dark; /* dark native pickers for datetime */
+}
+.vista-input:focus, .vista-select:focus { border-color: var(--v-purple-glow); }
+.vista-input::placeholder { color: var(--v-subtle); }
+
+.vista-phone-row { display: flex; }
+.vista-phone-row .vista-cc {
+  width: 64px; flex-shrink: 0;
+  border-radius: var(--v-radius-xs) 0 0 var(--v-radius-xs);
+  border-right: none;
+  text-align: center;
+}
+.vista-phone-row .vista-num { border-radius: 0 var(--v-radius-xs) var(--v-radius-xs) 0; }
+
+/* chip groups — render enum settings as tappable segments */
+.vista-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.vista-chip {
+  font-size: 11.5px; font-weight: 600;
+  color: var(--v-muted);
+  padding: 6px 12px;
+  border-radius: 18px;
+  border: 1px solid var(--v-border);
+  background: var(--v-surface-2);
+  transition: all .15s;
+}
+.vista-chip:hover { border-color: var(--v-border-2); color: var(--v-text); }
+.vista-chip.vista-on {
+  color: var(--v-text);
+  border-color: var(--v-purple);
+  background: var(--v-purple-dim);
+  box-shadow: 0 0 0 3px var(--v-purple-dim);
+}
+
+/* slider */
+.vista-slider-row { display: flex; align-items: center; gap: 10px; }
+.vista-slider-row output { font-size: 13px; font-weight: 700; color: var(--v-purple-2); min-width: 18px; text-align: center; }
+.vista-range {
+  flex: 1; -webkit-appearance: none; appearance: none;
+  height: 4px; border-radius: 3px;
+  background: var(--v-surface-3);
+  outline: none; cursor: pointer;
+}
+.vista-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 15px; height: 15px; border-radius: 50%;
+  background: var(--v-purple);
+  border: 2px solid var(--v-purple-2);
+}
+.vista-range::-moz-range-thumb {
+  width: 13px; height: 13px; border-radius: 50%;
+  background: var(--v-purple); border: 2px solid var(--v-purple-2);
+}
+
+/* toggle */
+.vista-toggle-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 9px 11px;
+  border: 1px solid var(--v-border);
+  border-radius: var(--v-radius-xs);
+  background: var(--v-surface-2);
+}
+.vista-toggle-row span { font-size: 12px; }
+.vista-switch {
+  width: 38px; height: 21px; flex-shrink: 0;
+  border-radius: 12px;
+  border: 1px solid var(--v-border);
+  background: var(--v-surface-3);
+  position: relative;
+  transition: background .2s, border-color .2s;
+}
+.vista-switch::after {
+  content: '';
+  position: absolute; top: 2px; left: 2px;
+  width: 15px; height: 15px; border-radius: 50%;
+  background: var(--v-text);
+  transition: transform .2s var(--v-ease);
+}
+.vista-switch.vista-on { background: var(--v-purple); border-color: var(--v-purple); }
+.vista-switch.vista-on::after { transform: translateX(17px); }
+
+.vista-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+/* collapsible advanced */
+.vista-collapse-head {
+  display: flex; align-items: center; justify-content: space-between;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--v-border);
+  border-radius: var(--v-radius-sm);
+  background: var(--v-surface-2);
+  font-size: 12px; font-weight: 600;
+  color: var(--v-muted);
+  margin-bottom: 10px;
+  transition: color .15s;
+}
+.vista-collapse-head:hover { color: var(--v-text); }
+.vista-collapse-head .vista-caret { transition: transform .25s var(--v-ease); font-size: 10px; }
+.vista-collapse[data-open="true"] .vista-caret { transform: rotate(180deg); }
+.vista-collapse-body { display: none; }
+.vista-collapse[data-open="true"] .vista-collapse-body { display: block; animation: vista-step-in .2s var(--v-ease); }
+
+/* post snapshot bar (top of step 4) */
+.vista-snapshot {
+  display: flex; align-items: center; gap: 10px;
+  border: 1px solid var(--v-border);
+  border-radius: var(--v-radius-sm);
+  background: var(--v-surface-2);
+  padding: 10px 12px;
+  margin-bottom: 16px;
+}
+.vista-snapshot p {
+  flex: 1; min-width: 0;
+  font-size: 11px; color: var(--v-muted); line-height: 1.45;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.vista-snapshot button {
+  flex-shrink: 0;
+  display: flex; align-items: center; gap: 5px;
+  font-size: 11px; font-weight: 600;
+  color: var(--v-purple-2);
+  border: 1px solid var(--v-purple-glow);
+  background: var(--v-purple-dim);
+  border-radius: 7px;
+  padding: 5px 10px;
+}
+.vista-snapshot.vista-stale { border-color: var(--v-amber); }
+.vista-snapshot.vista-stale p::before { content: 'Settings changed — regenerate to apply  ·  '; color: var(--v-amber); font-weight: 600; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SUCCESS
+   ══════════════════════════════════════════════════════════════════════════ */
+.vista-success { text-align: center; padding: 22px 8px 6px; }
+.vista-success-ring {
+  width: 68px; height: 68px;
+  margin: 0 auto 16px;
+}
+.vista-success-ring circle {
+  fill: none;
+  stroke: var(--v-green);
+  stroke-width: 2.5;
+  stroke-dasharray: 195; stroke-dashoffset: 195;
+  animation: vista-draw .55s var(--v-ease) forwards;
+}
+.vista-success-ring path {
+  fill: none;
+  stroke: var(--v-green);
+  stroke-width: 3; stroke-linecap: round; stroke-linejoin: round;
+  stroke-dasharray: 36; stroke-dashoffset: 36;
+  animation: vista-draw .35s .45s var(--v-ease) forwards;
+}
+@keyframes vista-draw { to { stroke-dashoffset: 0; } }
+.vista-success h3 { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
+.vista-success > p { font-size: 12.5px; color: var(--v-muted); line-height: 1.55; margin-bottom: 18px; }
+.vista-receipt {
+  text-align: left;
+  border: 1px solid var(--v-border);
+  border-radius: var(--v-radius-sm);
+  background: var(--v-surface-2);
+  padding: 13px 14px;
+  margin-bottom: 14px;
+}
+.vista-receipt-row {
+  display: flex; justify-content: space-between; gap: 10px;
+  font-size: 12px;
+  padding: 4px 0;
+}
+.vista-receipt-row dt { color: var(--v-muted); }
+.vista-receipt-row dd { font-weight: 600; text-align: right; }
+.vista-receipt-row dd.vista-green { color: var(--v-green); }
+.vista-receipt-row dd a { color: var(--v-blue); text-decoration: none; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   INLINE MODE (Vortex profile "Upload Tab" embed)
+   ══════════════════════════════════════════════════════════════════════════ */
+.vista-root[data-mode="inline"] .vista-fab { display: none; }
+.vista-root[data-mode="inline"] .vista-panel {
+  position: static;
+  width: 100%; max-width: 460px;
+  max-height: none;
+  opacity: 1; transform: none; pointer-events: auto;
+}
+
+/* ── Reduced motion ───────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .vista-root *, .vista-root *::before, .vista-root *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}

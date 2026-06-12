@@ -1,14 +1,88 @@
 // src/shared/api.js
-// Phase 1 (Sonnet): All functions return MOCK data.
-// Phase 2 (Codex): Replace mock implementations with real fetch calls.
-// The function signatures and response shapes MUST NOT change between phases.
+// Phase 1 wrote these as mocks; Phase 2/3 (this version) adds the real fetch
+// implementations. THE FUNCTION SIGNATURES AND RESPONSE SHAPES ARE UNCHANGED —
+// they are the frozen contract between widget and functions (RULES.md).
+//
+// Mode switching:
+//   window.VISTA_USE_MOCKS = true   → mock data (standalone widget testing, R5)
+//   otherwise                       → real Netlify function calls
+// Cross-origin embedding (Vortex):
+//   window.VISTA_API_BASE = 'https://vista.netlify.app'  (set by embed.js)
 
 import { FUNCTION_URLS } from './constants.js';
 
-const USE_MOCKS = true; // Codex flips this to false
+const isBrowser = typeof window !== 'undefined';
+const useMocks = () => isBrowser && window.VISTA_USE_MOCKS === true;
+const apiBase = () => (isBrowser && window.VISTA_API_BASE) || '';
 
-// ─── Mock Data ────────────────────────────────────────────────────────────────
+const SESSION_KEY = 'vista_session';
 
+// ─── Session helpers ──────────────────────────────────────────────────────────
+// The LinkedIn OAuth callback redirects back with #vista_session=<token>.
+// We stash it in localStorage and strip the fragment so it never lingers in
+// the address bar or browser history.
+
+export function consumeSessionFromUrl() {
+  if (!isBrowser) return;
+  const hash = window.location.hash || '';
+  const m = hash.match(/vista_session=([^&]+)/);
+  if (m) {
+    try { localStorage.setItem(SESSION_KEY, decodeURIComponent(m[1])); }
+    catch (err) { console.error('[VISTA] Could not persist session:', err); }
+    const clean = window.location.pathname + window.location.search;
+    history.replaceState(null, '', clean);
+  }
+  const e = hash.match(/vista_error=([^&]+)/);
+  if (e) console.error('[VISTA] OAuth error:', decodeURIComponent(e[1]));
+}
+
+export function getSession() {
+  if (!isBrowser) return null;
+  try { return localStorage.getItem(SESSION_KEY); } catch { return null; }
+}
+
+export function clearSession() {
+  if (!isBrowser) return;
+  try { localStorage.removeItem(SESSION_KEY); } catch { /* storage blocked */ }
+}
+
+export class AuthRequiredError extends Error {
+  constructor(message = 'LinkedIn connection required') {
+    super(message);
+    this.name = 'AuthRequiredError';
+  }
+}
+
+// ─── Shared request helper ────────────────────────────────────────────────────
+async function post(url, payload) {
+  let res;
+  try {
+    res = await fetch(apiBase() + url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(getSession() ? { Authorization: `Bearer ${getSession()}` } : {}),
+      },
+      body: JSON.stringify(payload),
+    });
+  } catch (err) {
+    // Network-level failure (offline, CORS, DNS) — distinct from API errors.
+    throw new Error(`Network error reaching VISTA backend: ${err.message}`);
+  }
+
+  if (res.status === 401) {
+    clearSession(); // token invalid/expired — force a fresh connect
+    throw new AuthRequiredError();
+  }
+  if (!res.ok) {
+    let detail = `${res.status}`;
+    try { detail = (await res.json()).error || detail; } catch { /* non-JSON body */ }
+    throw new Error(detail);
+  }
+  return res.json();
+}
+
+// ─── Mock data (unchanged shapes from Phase 1) ───────────────────────────────
 const MOCK_QUESTIONS = [
   "What specific skills did you develop or validate through earning this certification?",
   "How long did you prepare for this, and what was the most challenging part of the journey?",
@@ -29,99 +103,66 @@ Grateful for everyone who supported me along the way. This is just the beginning
 
 #AWS #CloudComputing #Certification #Growth #TechCareer`;
 
-// ─── API Functions ─────────────────────────────────────────────────────────────
+// ─── API surface (frozen contract) ───────────────────────────────────────────
 
 /**
- * Sends a compressed certificate image to the backend.
- * Returns exactly 5 personalised questions.
- *
- * @param {string} imageBase64 - Base64-encoded image string
- * @param {string} mimeType - e.g. 'image/jpeg'
+ * Certificate image → exactly 5 personalised questions.
+ * @param {string} imageBase64
+ * @param {string} mimeType
  * @returns {Promise<{ questions: string[] }>}
  */
 export async function analyzeImage(imageBase64, mimeType) {
-  if (USE_MOCKS) {
-    await delay(1800); // Simulate Gemini latency
+  if (useMocks()) {
+    await delay(1600);
     return { questions: MOCK_QUESTIONS };
   }
-
-  const res = await fetch(FUNCTION_URLS.ANALYZE_QUESTIONS, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ image: imageBase64, mimeType }),
-  });
-  if (!res.ok) throw new Error(`analyze-questions failed: ${res.status}`);
-  return res.json();
+  return post(FUNCTION_URLS.ANALYZE_QUESTIONS, { image: imageBase64, mimeType });
 }
 
 /**
- * Sends user answers and micro-settings to generate a LinkedIn post.
- *
- * @param {string[]} questions - The 5 questions (index-matched to answers)
- * @param {string[]} answers - The user's 5 answers
- * @param {object} microSettings - The full micro-settings object
+ * Answers + micro-settings → LinkedIn post draft.
  * @returns {Promise<{ postText: string }>}
  */
 export async function generatePost(questions, answers, microSettings) {
-  if (USE_MOCKS) {
-    await delay(2200);
+  if (useMocks()) {
+    await delay(2000);
     return { postText: MOCK_POST_DRAFT };
   }
-
-  const res = await fetch(FUNCTION_URLS.GENERATE_POST, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ questions, answers, microSettings }),
-  });
-  if (!res.ok) throw new Error(`generate-post failed: ${res.status}`);
-  return res.json();
+  return post(FUNCTION_URLS.GENERATE_POST, { questions, answers, microSettings });
 }
 
 /**
- * Saves the post to the queue and triggers a WhatsApp approval message.
- *
- * @param {object} payload
- * @param {string} payload.postText
- * @param {string} payload.imageBase64
- * @param {string} payload.whatsappNumber - E.164 format e.g. +919876543210
- * @param {string} payload.scheduledAt - ISO 8601 datetime string
- * @param {object} payload.microSettings
- * @param {string[]} payload.questions
- * @param {string[]} payload.answers
- * @returns {Promise<{ postQueueId: string, status: string }>}
+ * Save the post, create the approval token, ping WhatsApp.
+ * Response keeps the frozen { postQueueId, status } shape; the real backend
+ * additionally returns { whatsappDelivered, approveUrl? } so the widget can
+ * fall back to a manual approval link when CallMeBot is unreachable.
+ * @returns {Promise<{ postQueueId: string, status: string, whatsappDelivered?: boolean, approveUrl?: string }>}
  */
 export async function schedulePost(payload) {
-  if (USE_MOCKS) {
-    await delay(1200);
+  if (useMocks()) {
+    await delay(1100);
     return {
       postQueueId: 'mock-queue-id-' + Date.now(),
       status: 'pending_approval',
+      whatsappDelivered: true,
     };
   }
-
-  const res = await fetch(FUNCTION_URLS.SCHEDULE_WHATSAPP, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) throw new Error(`schedule-whatsapp failed: ${res.status}`);
-  return res.json();
+  return post(FUNCTION_URLS.SCHEDULE_WHATSAPP, payload);
 }
 
 /**
- * Initiates LinkedIn OAuth by redirecting the user to the auth URL.
- * This is a navigation action, not a fetch — it redirects the browser.
+ * Kick off LinkedIn OAuth. Navigation, not fetch — the callback function
+ * redirects back to return_to with #vista_session=<token>.
  */
 export function initiateLinkedInAuth() {
-  if (USE_MOCKS) {
+  if (useMocks()) {
     console.log('[MOCK] Would redirect to LinkedIn OAuth');
     return;
   }
-  window.location.href = `${FUNCTION_URLS.CALLBACK}?action=login`;
+  const returnTo = encodeURIComponent(window.location.href);
+  window.location.href =
+    `${apiBase()}${FUNCTION_URLS.CALLBACK}?action=login&return_to=${returnTo}`;
 }
 
-// ─── Utility ───────────────────────────────────────────────────────────────────
-
-function delay(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
+// ─── Utility ──────────────────────────────────────────────────────────────────
+function delay(ms) { return new Promise((r) => setTimeout(r, ms)); }
