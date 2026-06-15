@@ -101,6 +101,8 @@ export function createStep3Preview(ctx) {
   }
 
   async function copyPost() {
+    // Pull any in-flight edits into state so the clipboard never lags the textarea.
+    commitEdits();
     try {
       await navigator.clipboard.writeText(ctx.state.postText);
       const b = el.querySelector('[data-slot="copy"]');

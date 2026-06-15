@@ -57,6 +57,18 @@ export function createStep2Questions(ctx) {
     el.querySelector('[data-slot="back"]').addEventListener('click', ctx.goBack);
     el.querySelector('[data-slot="next"]').addEventListener('click', ctx.goNext);
     updateProgress();
+
+    // Auto-grow textareas that already have content (returning from Step 3 with
+    // saved answers, otherwise they'd be stuck at the 2-row default and clip
+    // longer responses out of view).
+    requestAnimationFrame(() => {
+      cards.querySelectorAll('textarea').forEach((ta) => {
+        if (ta.value) {
+          ta.style.height = 'auto';
+          ta.style.height = ta.scrollHeight + 'px';
+        }
+      });
+    });
   }
 
   function updateProgress() {

@@ -158,6 +158,7 @@ export function createMultiStepForm({ onSubtitleChange } = {}) {
       postText: '',
       postStale: false,
       microSettings: { ...MICRO_SETTINGS_DEFAULTS },
+      whatsappCc: '+91',
       whatsappNumber: '',
       scheduledAt: defaultScheduleISO(),
     });

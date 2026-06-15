@@ -142,6 +142,8 @@ export function createStep4Settings(ctx) {
       console.error('[VISTA] regenerate failed:', err);
       btn.disabled = false;
       btn.textContent = '↻ Retry';
+      if (err instanceof AuthRequiredError) return renderAuthGate();
+      showErrorBanner(err.message || 'Could not regenerate the post. Try again.');
     }
   }
 
@@ -151,15 +153,18 @@ export function createStep4Settings(ctx) {
     const dtEl = el.querySelector('[data-slot="dt"]');
     const btn = el.querySelector('[data-slot="submit"]');
 
-    const phone = ctx.state.whatsappNumber;
-    if (!/^\d{8,14}$/.test(phone)) return flagInvalid(phoneEl);
+    // Users often type the domestic trunk prefix ("0987…") which is NOT valid
+    // E.164 — strip it here so "0987654321" + "+91" becomes +919876543210, not
+    // +9109876543210 (which would publish a number that can't receive WhatsApp).
+    const phone = (ctx.state.whatsappNumber || '').replace(/^0+/, '');
+    if (!/^\d{8,14}$/.test(phone)) return flagInvalid(phoneEl, 'Enter a valid phone number');
     // Users type "91", "+91" or "0091" — normalise to E.164 here because the
     // backend strictly validates /^\+\d{8,15}$/ and would 400 otherwise.
     const ccDigits = (ctx.state.whatsappCc || '').replace(/\D/g, '').replace(/^0+/, '');
     const fullNumber = `+${ccDigits}${phone}`;
-    if (!/^\+\d{8,15}$/.test(fullNumber)) return flagInvalid(ccEl);
+    if (!/^\+\d{8,15}$/.test(fullNumber)) return flagInvalid(ccEl, 'Enter a valid country code');
     if (!ctx.state.scheduledAt || new Date(ctx.state.scheduledAt) < new Date(Date.now() + 2 * 60 * 1000)) {
-      return flagInvalid(dtEl);
+      return flagInvalid(dtEl, 'Pick a time at least 2 minutes from now');
     }
 
     btn.disabled = true;
@@ -209,10 +214,11 @@ export function createStep4Settings(ctx) {
     el.scrollIntoView?.({ block: 'start' });
   }
 
-  function flagInvalid(input) {
+  function flagInvalid(input, reason) {
     input.focus();
     input.style.borderColor = 'var(--v-red)';
     setTimeout(() => (input.style.borderColor = ''), 1800);
+    if (reason) showErrorBanner(reason);
   }
 
   // ── tiny builders ──────────────────────────────────────────────────────────
