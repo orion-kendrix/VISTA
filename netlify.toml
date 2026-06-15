@@ -52,3 +52,11 @@
   from = "/auth/callback"
   to = "/.netlify/functions/callback"
   status = 200
+
+# This is an embeddable widget, so there's no homepage at the publish root.
+# Rather than show visitors a bare 404, send the root to the live widget lab.
+[[redirects]]
+  from = "/"
+  to = "/widget/?live"
+  status = 302
+  force = true
