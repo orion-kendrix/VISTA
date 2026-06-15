@@ -1,0 +1,32 @@
+name: VISTA scheduler
+
+# Publishes due, approved posts to LinkedIn. Replaces an external cron service:
+# GitHub runs this every 15 minutes and pings the scheduler function, which
+# claims and publishes any post whose scheduled time has passed.
+#
+# One-time setup: add a repository secret named SCHEDULER_SECRET whose value
+# matches the SCHEDULER_SECRET environment variable in Netlify.
+# (Repo - Settings - Secrets and variables - Actions - New repository secret.)
+
+on:
+  schedule:
+    # every 15 minutes (UTC). GitHub cron is best-effort and may be delayed a
+    # few minutes under load; fine for a posting queue.
+    - cron: '*/15 * * * *'
+  workflow_dispatch: {}   # lets you trigger a run manually from the Actions tab
+
+jobs:
+  publish-due-posts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger VISTA scheduler
+        run: |
+          code=$(curl -sS -o /tmp/body.txt -w "%{http_code}" -X POST \
+            -H "Authorization: Bearer ${SCHEDULER_SECRET}" \
+            https://vortex-vista.netlify.app/.netlify/functions/scheduler)
+          echo "HTTP $code"
+          cat /tmp/body.txt
+          # Fail the run on anything other than 2xx so failures are visible.
+          if [ "$code" -lt 200 ] || [ "$code" -ge 300 ]; then exit 1; fi
+        env:
+          SCHEDULER_SECRET: ${{ secrets.SCHEDULER_SECRET }}
