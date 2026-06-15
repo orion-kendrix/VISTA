@@ -144,7 +144,7 @@ export async function schedulePost(payload) {
     return {
       postQueueId: 'mock-queue-id-' + Date.now(),
       status: 'pending_approval',
-      whatsappDelivered: true,
+      emailDelivered: true,
     };
   }
   return post(FUNCTION_URLS.SCHEDULE_WHATSAPP, payload);

@@ -26,6 +26,7 @@ export function createMultiStepForm({ onSubtitleChange } = {}) {
     microSettings: { ...MICRO_SETTINGS_DEFAULTS },
     whatsappCc: '+91',
     whatsappNumber: '',
+    email: '',
     scheduledAt: defaultScheduleISO(),
   };
 
@@ -121,7 +122,8 @@ export function createMultiStepForm({ onSubtitleChange } = {}) {
           day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
         })
       : 'As soon as approved';
-    const phone = `${state.whatsappCc} ${maskPhone(state.whatsappNumber)}`;
+    const delivered = result.emailDelivered === true;
+    const sentTo = state.email || '—';
 
     const wrap = document.createElement('div');
     wrap.className = 'vista-success';
@@ -130,16 +132,16 @@ export function createMultiStepForm({ onSubtitleChange } = {}) {
         <circle cx="34" cy="34" r="31"></circle>
         <path d="M22 35 L30 43 L46 26"></path>
       </svg>
-      <h3>${result.whatsappDelivered === false ? 'Post saved!' : 'WhatsApp sent!'}</h3>
-      <p>${result.whatsappDelivered === false
-        ? 'WhatsApp could not be reached — use the approval link below instead.'
-        : 'Check your WhatsApp and tap <b>Approve</b>.<br>VISTA publishes it automatically at the scheduled time.'}</p>
+      <h3>${delivered ? 'Approval email sent!' : 'Post saved!'}</h3>
+      <p>${delivered
+        ? 'Check your inbox and tap <b>Approve</b>.<br>VISTA publishes it automatically at the scheduled time.'
+        : 'We couldn\'t email you — use the approval link below instead.'}</p>
       <dl class="vista-receipt">
         <div class="vista-receipt-row"><dt>Status</dt><dd class="vista-green">Pending approval</dd></div>
-        <div class="vista-receipt-row"><dt>Scheduled for</dt><dd>${when}</dd></div>
-        <div class="vista-receipt-row"><dt>Approval sent to</dt><dd>${phone}</dd></div>
+        <div class="vista-receipt-row"><dt>Scheduled for</dt><dd>${escapeHtml(when)}</dd></div>
+        <div class="vista-receipt-row"><dt>Approval sent to</dt><dd>${escapeHtml(sentTo)}</dd></div>
         <div class="vista-receipt-row"><dt>Link expires</dt><dd>in 24 hours</dd></div>
-        ${result.approveUrl ? `<div class="vista-receipt-row"><dt>Approve manually</dt><dd><a href="${result.approveUrl}" target="_blank" rel="noopener">Open link ↗</a></dd></div>` : ''}
+        ${result.approveUrl ? `<div class="vista-receipt-row"><dt>Approve manually</dt><dd><a href="${escapeHtml(result.approveUrl)}" target="_blank" rel="noopener">Open link ↗</a></dd></div>` : ''}
       </dl>
       <button class="vista-btn vista-btn-secondary" style="width:100%" data-vista-again>+ Schedule another post</button>`;
 
@@ -160,6 +162,7 @@ export function createMultiStepForm({ onSubtitleChange } = {}) {
       microSettings: { ...MICRO_SETTINGS_DEFAULTS },
       whatsappCc: '+91',
       whatsappNumber: '',
+      email: '',
       scheduledAt: defaultScheduleISO(),
     });
     Object.values(steps).forEach((s) => s.onReset?.());
@@ -180,7 +183,7 @@ function defaultScheduleISO() {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-function maskPhone(num) {
-  const s = String(num || '');
-  return s.length > 4 ? '•'.repeat(Math.max(0, s.length - 4)) + s.slice(-4) : s;
+function escapeHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, (c) =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }

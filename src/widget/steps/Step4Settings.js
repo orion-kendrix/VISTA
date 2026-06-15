@@ -35,12 +35,9 @@ export function createStep4Settings(ctx) {
       field('Publish date & time', `
         <input class="vista-input" type="datetime-local" data-slot="dt"
                value="${ctx.state.scheduledAt}" min="${nowLocalISO()}" />`),
-      field('WhatsApp number (for approval)', `
-        <div class="vista-phone-row">
-          <input class="vista-input vista-cc" data-slot="cc" value="${escapeHtml(ctx.state.whatsappCc)}" aria-label="Country code" />
-          <input class="vista-input vista-num" data-slot="phone" type="tel" inputmode="numeric"
-                 placeholder="9876543210" value="${escapeHtml(ctx.state.whatsappNumber)}" aria-label="Phone number" />
-        </div>`),
+      field('Email (for approval)', `
+        <input class="vista-input" data-slot="email" type="email" inputmode="email"
+               placeholder="you@example.com" value="${escapeHtml(ctx.state.email || '')}" aria-label="Approval email" />`),
     ]));
 
     // ── Primary voice settings — chips ──────────────────────────────────────
@@ -93,17 +90,13 @@ export function createStep4Settings(ctx) {
 
     const note = document.createElement('p');
     note.className = 'vista-hint';
-    note.textContent = 'You approve on WhatsApp before anything is published.';
+    note.textContent = 'We email you an approval link — nothing publishes until you approve.';
     el.appendChild(note);
 
     // ── Wiring ─────────────────────────────────────────────────────────────
     el.querySelector('[data-slot="regen"]').addEventListener('click', regenerate);
     el.querySelector('[data-slot="dt"]').addEventListener('change', (e) => ctx.setState({ scheduledAt: e.target.value }));
-    el.querySelector('[data-slot="cc"]').addEventListener('input', (e) => ctx.setState({ whatsappCc: e.target.value.trim() }));
-    el.querySelector('[data-slot="phone"]').addEventListener('input', (e) => {
-      e.target.value = e.target.value.replace(/\D/g, '');
-      ctx.setState({ whatsappNumber: e.target.value });
-    });
+    el.querySelector('[data-slot="email"]').addEventListener('input', (e) => ctx.setState({ email: e.target.value.trim() }));
     el.querySelector('[data-slot="industry"]').addEventListener('input', (e) => pick(K.INDUSTRY, e.target.value, { quiet: true }));
     const range = el.querySelector('[data-slot="hashtags"]');
     range.addEventListener('input', () => {
@@ -148,34 +141,26 @@ export function createStep4Settings(ctx) {
   }
 
   async function submit() {
-    const phoneEl = el.querySelector('[data-slot="phone"]');
-    const ccEl = el.querySelector('[data-slot="cc"]');
+    const emailEl = el.querySelector('[data-slot="email"]');
     const dtEl = el.querySelector('[data-slot="dt"]');
     const btn = el.querySelector('[data-slot="submit"]');
 
-    // Users often type the domestic trunk prefix ("0987…") which is NOT valid
-    // E.164 — strip it here so "0987654321" + "+91" becomes +919876543210, not
-    // +9109876543210 (which would publish a number that can't receive WhatsApp).
-    const phone = (ctx.state.whatsappNumber || '').replace(/^0+/, '');
-    if (!/^\d{8,14}$/.test(phone)) return flagInvalid(phoneEl, 'Enter a valid phone number');
-    // Users type "91", "+91" or "0091" — normalise to E.164 here because the
-    // backend strictly validates /^\+\d{8,15}$/ and would 400 otherwise.
-    const ccDigits = (ctx.state.whatsappCc || '').replace(/\D/g, '').replace(/^0+/, '');
-    const fullNumber = `+${ccDigits}${phone}`;
-    if (!/^\+\d{8,15}$/.test(fullNumber)) return flagInvalid(ccEl, 'Enter a valid country code');
+    const email = (ctx.state.email || '').trim();
+    // Permissive client check; the backend re-validates before it sends.
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return flagInvalid(emailEl, 'Enter a valid email address');
     if (!ctx.state.scheduledAt || new Date(ctx.state.scheduledAt) < new Date(Date.now() + 2 * 60 * 1000)) {
       return flagInvalid(dtEl, 'Pick a time at least 2 minutes from now');
     }
 
     btn.disabled = true;
-    btn.innerHTML = '<span class="vista-spinner"></span> Saving & pinging WhatsApp…';
+    btn.innerHTML = '<span class="vista-spinner"></span> Saving & emailing you…';
 
     try {
       const result = await schedulePost({
         postText: ctx.state.postText,
         imageBase64: ctx.state.image?.base64 || null,
         imageMimeType: ctx.state.image?.mimeType || null,
-        whatsappNumber: fullNumber,
+        email,
         scheduledAt: new Date(ctx.state.scheduledAt).toISOString(),
         microSettings: ctx.state.microSettings,
         questions: ctx.state.questions,

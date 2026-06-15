@@ -16,6 +16,7 @@ import {
   insertPost, insertQuestionnaire, setPostImageUrl,
   updateUserWhatsapp, uploadCertificateImage,
 } from './_utils/supabaseClient.js';
+import { sendApprovalEmail, emailConfigured } from './_utils/emailClient.js';
 
 export default async (req) => {
   const pf = preflight(req);
@@ -29,7 +30,14 @@ export default async (req) => {
     // ── Validation (fail fast, fail loud) ───────────────────────────────────
     if (!p.postText?.trim()) return json(400, { error: 'postText is required' }, req);
     if (p.postText.length > 3000) return json(400, { error: 'Post exceeds LinkedIn\'s 3000 character limit' }, req);
-    if (!/^\+\d{8,15}$/.test(p.whatsappNumber || '')) {
+    // Email is the primary approval channel; WhatsApp is optional/legacy. Both
+    // are validated only when present — if neither is given, the response still
+    // carries the manual approveUrl so the user is never stranded.
+    const email = (p.email || '').trim();
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return json(400, { error: 'email must be a valid address' }, req);
+    }
+    if (p.whatsappNumber && !/^\+\d{8,15}$/.test(p.whatsappNumber)) {
       return json(400, { error: 'whatsappNumber must be E.164, e.g. +919876543210' }, req);
     }
     const scheduledAt = new Date(p.scheduledAt);
@@ -38,7 +46,7 @@ export default async (req) => {
     }
 
     // ── Persist ─────────────────────────────────────────────────────────────
-    await updateUserWhatsapp(userId, p.whatsappNumber);
+    if (p.whatsappNumber) await updateUserWhatsapp(userId, p.whatsappNumber);
 
     const approvalToken = randomToken();
     const ttlHours = Number(process.env.TOKEN_EXPIRY_HOURS) || 24;
@@ -72,28 +80,43 @@ export default async (req) => {
       Array.isArray(p.answers) ? p.answers : []
     );
 
-    // ── WhatsApp ping ───────────────────────────────────────────────────────
+    // ── Notify ──────────────────────────────────────────────────────────────
     const appUrl = (process.env.APP_URL || '').replace(/\/$/, '');
     const approveUrl = `${appUrl}/.netlify/functions/approve?token=${approvalToken}&decision=approved`;
     const rejectUrl = `${appUrl}/.netlify/functions/approve?token=${approvalToken}&decision=rejected`;
 
+    // Email — the primary approval channel.
+    let emailDelivered = false;
+    if (email && emailConfigured()) {
+      try {
+        await sendApprovalEmail({ to: email, postText: p.postText, scheduledAt, imageUrl, approveUrl, rejectUrl, ttlHours });
+        emailDelivered = true;
+      } catch (err) {
+        console.error('[schedule-whatsapp] approval email failed:', err);
+      }
+    } else if (email && !emailConfigured()) {
+      console.warn('[schedule-whatsapp] email given but BREVO_API_KEY/EMAIL_FROM not set — skipping email send');
+    }
+
+    // WhatsApp — optional legacy channel, only when a number AND a key exist.
     let whatsappDelivered = false;
-    if (process.env.CALLMEBOT_API_KEY) {
+    if (p.whatsappNumber && process.env.CALLMEBOT_API_KEY) {
       try {
         await sendCallMeBot(p.whatsappNumber, buildMessage(p.postText, scheduledAt, imageUrl, approveUrl, rejectUrl, ttlHours));
         whatsappDelivered = true;
       } catch (err) {
         console.error('[schedule-whatsapp] CallMeBot send failed:', err);
       }
-    } else {
-      console.warn('[schedule-whatsapp] CALLMEBOT_API_KEY not set — skipping WhatsApp send');
     }
 
     return json(200, {
       postQueueId: post.id,
       status: 'pending_approval',
+      emailDelivered,
       whatsappDelivered,
-      ...(whatsappDelivered ? {} : { approveUrl }),
+      // Always return the manual link so the user can approve even if every
+      // delivery channel was unavailable.
+      approveUrl,
     }, req);
   } catch (err) {
     if (err.status) return json(err.status, { error: err.message }, req);
