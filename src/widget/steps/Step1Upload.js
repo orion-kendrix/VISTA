@@ -112,6 +112,15 @@ export function createStep1Upload(ctx) {
 
   function renderFileCard() {
     const img = ctx.state.image;
+    // The host page (e.g. Vortex) may expose a hook to also save the certificate
+    // to the user's profile. The option only appears when that hook exists, so
+    // the standalone widget is unaffected.
+    const canSaveToProfile =
+      typeof window !== 'undefined' && typeof window.VISTA_ON_SAVE_CERTIFICATE === 'function';
+    if (canSaveToProfile && !ctx.state.certTitle) {
+      ctx.setState({ certTitle: stripExt(img.name) });
+    }
+
     fileSlot.innerHTML = `
       <div class="vista-file-card">
         ${img.isPdf
@@ -124,11 +133,36 @@ export function createStep1Upload(ctx) {
           </div>
           <button class="vista-file-remove" type="button">Remove</button>
         </div>
-      </div>`;
+      </div>
+      ${canSaveToProfile ? `
+        <label class="vista-save-profile">
+          <input type="checkbox" data-slot="saveprofile" ${ctx.state.saveToProfile ? 'checked' : ''} />
+          <span>Also add this certificate to my Vortex profile</span>
+        </label>
+        <div class="vista-save-fields" data-slot="savefields" style="${ctx.state.saveToProfile ? '' : 'display:none'}">
+          <input class="vista-input" data-slot="certtitle" placeholder="Certificate title"
+                 value="${escapeHtml(ctx.state.certTitle || stripExt(img.name))}" />
+          <input class="vista-input" data-slot="certissuer" placeholder="Issuer (optional)"
+                 value="${escapeHtml(ctx.state.certIssuer || '')}" />
+        </div>` : ''}`;
+
     fileSlot.querySelector('.vista-file-remove').addEventListener('click', () => {
       clearFile();
       ctx.refresh(); // stepper must lock downstream steps again
     });
+
+    if (canSaveToProfile) {
+      const cb = fileSlot.querySelector('[data-slot="saveprofile"]');
+      const fields = fileSlot.querySelector('[data-slot="savefields"]');
+      cb.addEventListener('change', () => {
+        ctx.setState({ saveToProfile: cb.checked });
+        fields.style.display = cb.checked ? '' : 'none';
+      });
+      fileSlot.querySelector('[data-slot="certtitle"]')
+        .addEventListener('input', (e) => ctx.setState({ certTitle: e.target.value }));
+      fileSlot.querySelector('[data-slot="certissuer"]')
+        .addEventListener('input', (e) => ctx.setState({ certIssuer: e.target.value }));
+    }
     drop.style.display = 'none';
   }
 
@@ -138,7 +172,11 @@ export function createStep1Upload(ctx) {
   }
 
   function clearFile() {
-    ctx.setState({ image: null, questions: [], answers: ['', '', '', '', ''], postText: '', postStale: false, maxReachedIndex: 0 });
+    ctx.setState({
+      image: null, questions: [], answers: ['', '', '', '', ''],
+      postText: '', postStale: false, maxReachedIndex: 0,
+      saveToProfile: false, certTitle: '', certIssuer: '',
+    });
     fileSlot.innerHTML = '';
     drop.style.display = '';
     input.value = '';
@@ -189,6 +227,10 @@ function canvasCompress(file, maxDim, quality) {
     img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Image decode failed')); };
     img.src = url;
   });
+}
+
+function stripExt(name) {
+  return String(name || 'Certificate').replace(/\.[^.]+$/, '').trim() || 'Certificate';
 }
 
 function escapeHtml(s) {

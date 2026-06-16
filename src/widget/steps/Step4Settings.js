@@ -166,7 +166,26 @@ export function createStep4Settings(ctx) {
         questions: ctx.state.questions,
         answers: ctx.state.answers,
       });
-      ctx.showSuccess(result);
+
+      // Optionally save the certificate to the host profile (e.g. Vortex).
+      // Best-effort: a failure here never blocks the scheduled post (R8 logged).
+      const result2 = { ...result };
+      if (ctx.state.saveToProfile && ctx.state.image
+          && typeof window !== 'undefined' && typeof window.VISTA_ON_SAVE_CERTIFICATE === 'function') {
+        try {
+          const r = await window.VISTA_ON_SAVE_CERTIFICATE({
+            base64: ctx.state.image.base64,
+            mimeType: ctx.state.image.mimeType,
+            fileName: ctx.state.image.name,
+            title: (ctx.state.certTitle || '').trim() || ctx.state.image.name,
+            issuer: (ctx.state.certIssuer || '').trim(),
+          });
+          result2.profileSaved = !!(r && r.ok);
+        } catch (err) {
+          console.error('[VISTA] save-to-profile hook failed:', err);
+        }
+      }
+      ctx.showSuccess(result2);
     } catch (err) {
       console.error('[VISTA] schedule failed:', err);
       btn.disabled = false;

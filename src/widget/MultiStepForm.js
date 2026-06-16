@@ -27,6 +27,9 @@ export function createMultiStepForm({ onSubtitleChange } = {}) {
     whatsappCc: '+91',
     whatsappNumber: '',
     email: '',
+    saveToProfile: false,   // opt-in: also save the cert to the host profile
+    certTitle: '',
+    certIssuer: '',
     scheduledAt: defaultScheduleISO(),
   };
 
@@ -141,6 +144,7 @@ export function createMultiStepForm({ onSubtitleChange } = {}) {
         <div class="vista-receipt-row"><dt>Scheduled for</dt><dd>${escapeHtml(when)}</dd></div>
         <div class="vista-receipt-row"><dt>Approval sent to</dt><dd>${escapeHtml(sentTo)}</dd></div>
         <div class="vista-receipt-row"><dt>Link expires</dt><dd>in 24 hours</dd></div>
+        ${result.profileSaved ? `<div class="vista-receipt-row"><dt>Vortex profile</dt><dd class="vista-green">✓ Certificate added</dd></div>` : ''}
         ${result.approveUrl ? `<div class="vista-receipt-row"><dt>Approve manually</dt><dd><a href="${escapeHtml(result.approveUrl)}" target="_blank" rel="noopener">Open link ↗</a></dd></div>` : ''}
       </dl>
       <button class="vista-btn vista-btn-secondary" style="width:100%" data-vista-again>+ Schedule another post</button>`;
@@ -163,6 +167,9 @@ export function createMultiStepForm({ onSubtitleChange } = {}) {
       whatsappCc: '+91',
       whatsappNumber: '',
       email: '',
+      saveToProfile: false,
+      certTitle: '',
+      certIssuer: '',
       scheduledAt: defaultScheduleISO(),
     });
     Object.values(steps).forEach((s) => s.onReset?.());

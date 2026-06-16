@@ -404,6 +404,18 @@
 }
 .vista-file-remove { font-size: 11px; font-weight: 600; color: var(--v-red); flex-shrink: 0; }
 
+/* Opt-in: also save the certificate to the host profile (shown only when the
+   embedding page provides a save hook, e.g. Vortex). */
+.vista-save-profile {
+  display: flex; align-items: center; gap: 9px;
+  margin-bottom: 10px; padding: 10px 12px;
+  border: 1px solid var(--v-border); border-radius: var(--v-radius-xs);
+  background: var(--v-surface-2);
+  font-size: 12px; color: var(--v-text); cursor: pointer;
+}
+.vista-save-profile input { width: 15px; height: 15px; accent-color: var(--v-purple); cursor: pointer; }
+.vista-save-fields { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+
 /* ══════════════════════════════════════════════════════════════════════════
    STEP 2 — QUESTIONS
    ══════════════════════════════════════════════════════════════════════════ */
