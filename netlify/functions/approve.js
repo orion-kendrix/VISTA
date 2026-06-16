@@ -5,7 +5,10 @@
 // SECURITY DEFINER approve_post() function from 002_rls_policies.sql, which
 // makes the link single-use at the database layer.
 
-import { getClient } from './_utils/supabaseClient.js';
+import {
+  getClient, getPostByApprovalToken, claimPost, getUser, markPublished, markFailed,
+} from './_utils/supabaseClient.js';
+import { publishPost } from './_utils/linkedinClient.js';
 import { html } from './_utils/http.js';
 
 export default async (req) => {
@@ -37,16 +40,66 @@ export default async (req) => {
         'Approval links work once and expire after 24 hours. Schedule the post again from VISTA if needed.'));
     }
 
-    return data === 'approved'
-      ? html(200, page('✅', 'Post approved!',
-          'VISTA will publish it to LinkedIn at the scheduled time. You can close this tab.'))
-      : html(200, page('🗑️', 'Post rejected',
-          'Nothing will be published. You can close this tab.'));
+    if (data === 'rejected') {
+      return html(200, page('🗑️', 'Post rejected', 'Nothing will be published. You can close this tab.'));
+    }
+
+    // Publish-on-approval: if the scheduled time has already passed, publish
+    // NOW instead of waiting up to 30 min for the cron. Best-effort — any
+    // failure here is logged and the cron remains the backstop.
+    const outcome = await maybePublishNow(token).catch((err) => {
+      console.error('[approve] immediate publish error (cron will retry):', err);
+      return 'scheduled';
+    });
+
+    return outcome === 'published'
+      ? html(200, page('🚀', 'Posted to LinkedIn!',
+          'Your post is live on your feed right now. You can close this tab.'))
+      : html(200, page('✅', 'Post approved!',
+          'VISTA will publish it to LinkedIn at the scheduled time. You can close this tab.'));
   } catch (err) {
     console.error('[approve] failed:', err);
     return html(500, page('⚠️', 'Something went wrong', 'Please try the link again in a moment.'));
   }
 };
+
+/**
+ * If the just-approved post is already due (scheduled_at ≤ now), claim and
+ * publish it immediately so "post now" is instant. Future-scheduled posts are
+ * left for the cron. Returns 'published' | 'scheduled' | 'failed'.
+ */
+async function maybePublishNow(token) {
+  const post = await getPostByApprovalToken(token);
+  if (!post || new Date(post.scheduled_at) > new Date()) return 'scheduled';
+
+  // Status guard (approved → processing) prevents a double publish if the cron
+  // grabs the same post at the same moment.
+  const claimed = await claimPost(post.id);
+  if (!claimed) return 'scheduled';
+
+  try {
+    const user = await getUser(post.user_id);
+    const tokenDead =
+      !user?.access_token ||
+      (user.token_expires_at && new Date(user.token_expires_at) < new Date());
+    if (tokenDead) {
+      await markFailed(post.id);
+      return 'failed';
+    }
+    const linkedinPostId = await publishPost({
+      accessToken: user.access_token,
+      personUrn: `urn:li:person:${user.linkedin_id}`,
+      text: post.post_text,
+      imageUrl: post.image_url,
+    });
+    await markPublished(post.id, linkedinPostId);
+    return 'published';
+  } catch (err) {
+    console.error(`[approve] publish failed for ${post.id}:`, err);
+    try { await markFailed(post.id); } catch { /* leave for manual triage */ }
+    return 'failed';
+  }
+}
 
 // Self-contained dark page matching the VISTA/Vortex theme — opened from
 // WhatsApp's in-app browser, so it must need zero external assets.

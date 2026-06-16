@@ -100,6 +100,17 @@ export async function getDuePosts(limit = 5) {
   return check(res, 'get due posts');
 }
 
+/** approve.js read: fetch a post by its approval token for publish-on-approval. */
+export async function getPostByApprovalToken(token) {
+  const res = await getClient()
+    .from('post_queue')
+    .select('*')
+    .eq('approval_token', token)
+    .limit(1);
+  const rows = check(res, 'get post by approval token');
+  return rows?.[0] ?? null;
+}
+
 /**
  * Atomically claim a post for publishing: approved → processing.
  * The .eq('status','approved') guard means a concurrent/retried scheduler run
