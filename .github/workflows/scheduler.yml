@@ -10,9 +10,10 @@ name: VISTA scheduler
 
 on:
   schedule:
-    # every 15 minutes (UTC). GitHub cron is best-effort and may be delayed a
-    # few minutes under load; fine for a posting queue.
-    - cron: '*/15 * * * *'
+    # every 30 minutes (UTC). Halved from 15 min to conserve Netlify function
+    # credits while keeping worst-case publish latency reasonable. GitHub cron
+    # is best-effort and may be delayed a few minutes under load.
+    - cron: '*/30 * * * *'
   workflow_dispatch: {}   # lets you trigger a run manually from the Actions tab
 
 jobs:
