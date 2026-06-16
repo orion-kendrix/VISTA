@@ -6,6 +6,12 @@
       "runtimeExecutable": "node",
       "runtimeArgs": ["scripts/dev-server.js", "3999"],
       "port": 3999
+    },
+    {
+      "name": "vortex",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "website/CodeVortex", "run", "dev"],
+      "port": 3000
     }
   ]
 }
