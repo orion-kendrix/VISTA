@@ -30,7 +30,14 @@ export default async (req) => {
     }
 
     const result = await model().generateContent(buildPrompt(questions, answers, microSettings));
-    const postText = cleanOutput(result.response.text());
+    const raw = result.response.text();
+    // Backstop for word-like gibberish the client heuristic can't catch
+    // ('tesitni', 'egerg'): the prompt is told to emit this sentinel when the
+    // answers are nonsense, so we reject instead of publishing meaningless text.
+    if (/VISTA_INSUFFICIENT/i.test(raw)) {
+      return json(422, { error: "Those answers don't give us enough real detail to write a good post — add a sentence or two of genuine detail and try again." }, req);
+    }
+    const postText = cleanOutput(raw);
     if (!postText) {
       return json(502, { error: 'Post generation returned empty output — please retry' }, req);
     }
@@ -103,6 +110,8 @@ function buildPrompt(questions, answers, s) {
 
   return `You are VISTA, writing a LinkedIn post about a certification the author just earned.
 Base it entirely on their own words below — keep their authentic voice, never invent facts.
+
+IMPORTANT: If the answers are gibberish, random characters, or nonsense that does not describe a real achievement or experience (e.g. "asdf", "tesitni", keyboard mashing, single random words), do NOT write a post. Instead reply with EXACTLY this one word and nothing else: VISTA_INSUFFICIENT
 
 THEIR ANSWERS:
 ${qa}
