@@ -29,7 +29,7 @@ export function createStep2Questions(ctx) {
         <button class="vista-btn vista-btn-secondary" data-slot="back">←</button>
         <button class="vista-btn vista-btn-primary" data-slot="next">Generate post →</button>
       </div>
-      <p class="vista-hint">Answer at least ${MIN_ANSWERS} — more detail means a better post</p>`;
+      <p class="vista-hint">Answer at least ${MIN_ANSWERS} with real detail — random text won't make a good post</p>`;
 
     const cards = el.querySelector('[data-slot="cards"]');
     questions.forEach((q, i) => {
@@ -41,16 +41,23 @@ export function createStep2Questions(ctx) {
           <span class="vista-qnum">${i + 1}</span><span>Question ${i + 1}</span>
         </div>
         <p class="vista-qtext">${escapeHtml(q)}</p>
-        <textarea rows="2" placeholder="Share your answer…">${escapeHtml(ctx.state.answers[i] || '')}</textarea>`;
+        <textarea rows="2" placeholder="Share your answer…">${escapeHtml(ctx.state.answers[i] || '')}</textarea>
+        <small class="vista-qhint">A bit more detail, please — random text won't make a good post.</small>`;
       const ta = card.querySelector('textarea');
+      const reflect = (val) => {
+        const t = val.trim();
+        const ok = isSubstantive(t);
+        card.classList.toggle('vista-answered', ok);
+        card.classList.toggle('vista-thin', t.length > 0 && !ok);
+      };
       ta.addEventListener('input', () => {
         ctx.state.answers[i] = ta.value;
         ta.style.height = 'auto';                 // auto-grow
         ta.style.height = ta.scrollHeight + 'px';
-        card.classList.toggle('vista-answered', ta.value.trim().length > 0);
+        reflect(ta.value);
         updateProgress();
       });
-      if ((ctx.state.answers[i] || '').trim()) card.classList.add('vista-answered');
+      reflect(ctx.state.answers[i] || '');
       cards.appendChild(card);
     });
 
@@ -72,12 +79,14 @@ export function createStep2Questions(ctx) {
   }
 
   function updateProgress() {
-    const answered = ctx.state.answers.filter((a) => a.trim()).length;
+    // Only substantive answers count toward the gate, so gibberish can't unlock
+    // generation (the friend's review: 'asas'/'asadasf' should be rejected).
+    const answered = ctx.state.answers.filter((a) => isSubstantive(a)).length;
     const fill = el.querySelector('[data-slot="fill"]');
     const count = el.querySelector('[data-slot="count"]');
     const next = el.querySelector('[data-slot="next"]');
     if (fill) fill.style.width = `${(answered / 5) * 100}%`;
-    if (count) count.textContent = `${answered} of 5 answered`;
+    if (count) count.textContent = `${answered} of 5 with detail`;
     if (next) next.disabled = answered < MIN_ANSWERS;
   }
 
@@ -145,6 +154,30 @@ export function createStep2Questions(ctx) {
     },
     onReset() { loading = false; el.innerHTML = ''; },
   };
+}
+
+// A real answer is a short phrase, not keyboard-mashing. The length gate alone
+// catches the reported cases ('asas', 'asadasf', 'jjjj'); looksJunky() adds
+// cover for longer mashes ('asdfasdfasdf'). Word-like gibberish ('tesitni') is
+// caught server-side by the generate-post prompt.
+function isSubstantive(text) {
+  const s = String(text || '').trim();
+  return s.length >= 12 && !looksJunky(s);
+}
+function looksJunky(text) {
+  const s = String(text || '').toLowerCase();
+  if (/(.)\1{3,}/.test(s)) return true;                              // 'jjjj', 'aaaa'
+  if (/^(.{1,2})\1{2,}$/.test(s.replace(/\s/g, ''))) return true;    // 'asas', 'ababab'
+  if (/(asdf|sdfg|qwer|wert|erty|zxcv|xcvb|hjkl|qwerty)/.test(s)) return true; // keyboard runs
+  const compact = s.replace(/[^a-z]/g, '');
+  if (compact.length >= 4 && !/[aeiou]/.test(compact)) return true;  // no vowels at all
+  if (compact.length >= 5) {                                         // one letter dominating
+    const freq = {};
+    let max = 0;
+    for (const c of compact) { freq[c] = (freq[c] || 0) + 1; if (freq[c] > max) max = freq[c]; }
+    if (max / compact.length >= 0.5) return true;
+  }
+  return false;
 }
 
 function escapeHtml(s) {

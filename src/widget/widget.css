@@ -486,6 +486,10 @@
 }
 .vista-qcard textarea::placeholder { color: var(--v-subtle); }
 .vista-qcard textarea:focus { border-color: var(--v-purple-glow); }
+/* Thin/gibberish answer nudge */
+.vista-qhint { display: none; margin-top: 6px; font-size: 10.5px; line-height: 1.4; color: var(--v-amber); }
+.vista-qcard.vista-thin { border-color: var(--v-amber); }
+.vista-qcard.vista-thin .vista-qhint { display: block; }
 
 /* skeleton shimmer while Gemini thinks */
 .vista-skel {
