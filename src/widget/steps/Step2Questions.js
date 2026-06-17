@@ -162,13 +162,13 @@ export function createStep2Questions(ctx) {
 // caught server-side by the generate-post prompt.
 function isSubstantive(text) {
   const s = String(text || '').trim();
-  return s.length >= 12 && !looksJunky(s);
+  return s.length >= 10 && !looksJunky(s);
 }
 function looksJunky(text) {
   const s = String(text || '').toLowerCase();
   if (/(.)\1{3,}/.test(s)) return true;                              // 'jjjj', 'aaaa'
   if (/^(.{1,2})\1{2,}$/.test(s.replace(/\s/g, ''))) return true;    // 'asas', 'ababab'
-  if (/(asdf|sdfg|qwer|wert|erty|zxcv|xcvb|hjkl|qwerty)/.test(s)) return true; // keyboard runs
+  if (/(asdf|sdfg|qwer|zxcv|xcvb|hjkl|qwerty)/.test(s)) return true; // keyboard runs (NOT 'wert'/'erty' — they hit real words: property, liberty, puberty)
   const compact = s.replace(/[^a-z]/g, '');
   if (compact.length >= 4 && !/[aeiou]/.test(compact)) return true;  // no vowels at all
   if (compact.length >= 5) {                                         // one letter dominating
