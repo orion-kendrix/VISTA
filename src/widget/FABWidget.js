@@ -17,6 +17,13 @@ const V_LOGO = `
     <path d="M5 7L14 21L23 7H18.5L14 15L9.5 7H5Z" fill="currentColor"/>
   </svg>`;
 
+// "history" glyph (lucide) for the My Posts header button.
+const HISTORY_ICON = `
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+       stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l3 2"/>
+  </svg>`;
+
 export function initVistaWidget(options = {}) {
   const mode = options.mode === 'inline' ? 'inline' : 'fab';
 
@@ -53,6 +60,15 @@ export function initVistaWidget(options = {}) {
       <h2>VISTA</h2>
       <p data-vista-subtitle>Certificate → LinkedIn post</p>
     </div>`;
+
+  // "My Posts" — opens the post-history side view. Wired after the form exists.
+  const historyBtn = document.createElement('button');
+  historyBtn.className = 'vista-history-btn';
+  historyBtn.type = 'button';
+  historyBtn.setAttribute('aria-label', 'My posts');
+  historyBtn.setAttribute('title', 'My posts');
+  historyBtn.innerHTML = HISTORY_ICON;
+  header.appendChild(historyBtn);
 
   panel.appendChild(header);
 
@@ -110,6 +126,9 @@ export function initVistaWidget(options = {}) {
     },
   });
   panel.appendChild(form.el);
+
+  // Header "My Posts" button opens the history side view (form owns the body).
+  historyBtn.addEventListener('click', () => form.showPosts());
 
   // ── Attach to DOM ───────────────────────────────────────────────────────
   if (mode === 'inline') {

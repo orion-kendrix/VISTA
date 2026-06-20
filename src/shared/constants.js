@@ -59,6 +59,7 @@ export const FUNCTION_URLS = {
   ANALYZE_QUESTIONS: '/.netlify/functions/analyze-questions',
   GENERATE_POST: '/.netlify/functions/generate-post',
   SCHEDULE_WHATSAPP: '/.netlify/functions/schedule-whatsapp',
+  LIST_POSTS: '/.netlify/functions/list-posts',
   APPROVE: '/.netlify/functions/approve',
   CALLBACK: '/.netlify/functions/callback',
 };

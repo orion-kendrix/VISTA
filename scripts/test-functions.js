@@ -35,6 +35,16 @@ const checks = [
     expect: [401],
   },
   {
+    name: 'list-posts requires a session (always)',
+    req: ['/.netlify/functions/list-posts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }],
+    expect: [401],
+  },
+  {
+    name: 'list-posts rejects non-POST',
+    req: ['/.netlify/functions/list-posts', { method: 'GET' }],
+    expect: [405],
+  },
+  {
     name: 'approve rejects a malformed link',
     req: ['/.netlify/functions/approve', { method: 'GET' }],
     expect: [400],

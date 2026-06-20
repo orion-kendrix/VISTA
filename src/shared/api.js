@@ -103,6 +103,33 @@ Grateful for everyone who supported me along the way. This is just the beginning
 
 #AWS #CloudComputing #Certification #Growth #TechCareer`;
 
+const MOCK_POSTS = [
+  {
+    id: 'mock-1', status: 'published',
+    post_text: 'Thrilled to share that I just earned my AWS Solutions Architect certification! Three months of early mornings finally paid off. 🚀',
+    scheduled_at: null, published_at: '2026-06-15T09:00:00Z',
+    linkedin_post_id: 'urn:li:share:7000000000000000001', created_at: '2026-06-14T18:00:00Z',
+  },
+  {
+    id: 'mock-2', status: 'approved',
+    post_text: 'Just wrapped up my Google Data Analytics certificate — excited to put these skills to work on real dashboards.',
+    scheduled_at: '2026-06-25T09:00:00Z', published_at: null,
+    linkedin_post_id: null, created_at: '2026-06-19T12:30:00Z',
+  },
+  {
+    id: 'mock-3', status: 'pending_approval',
+    post_text: 'Earned my Scrum Master certification this week. Grateful to the mentors who pushed me to think in sprints.',
+    scheduled_at: '2026-06-22T18:00:00Z', published_at: null,
+    linkedin_post_id: null, created_at: '2026-06-20T08:15:00Z',
+  },
+  {
+    id: 'mock-4', status: 'failed',
+    post_text: 'Completed the Meta Front-End Developer program — onto building delightful UIs.',
+    scheduled_at: '2026-06-10T09:00:00Z', published_at: null,
+    linkedin_post_id: null, created_at: '2026-06-09T20:00:00Z',
+  },
+];
+
 // ─── API surface (frozen contract) ───────────────────────────────────────────
 
 /**
@@ -148,6 +175,19 @@ export async function schedulePost(payload) {
     };
   }
   return post(FUNCTION_URLS.SCHEDULE_WHATSAPP, payload);
+}
+
+/**
+ * The authenticated user's own posts, newest first, for the "My Posts" view.
+ * @param {number} [limit]
+ * @returns {Promise<{ posts: Array<{ id, status, post_text, scheduled_at, published_at, linkedin_post_id, created_at }> }>}
+ */
+export async function listPosts(limit) {
+  if (useMocks()) {
+    await delay(600);
+    return { posts: MOCK_POSTS };
+  }
+  return post(FUNCTION_URLS.LIST_POSTS, limit ? { limit } : {});
 }
 
 /**

@@ -777,6 +777,78 @@
 .vista-receipt-row dd a { color: var(--v-blue); text-decoration: none; }
 
 /* ══════════════════════════════════════════════════════════════════════════
+   MY POSTS (history side view)
+   ══════════════════════════════════════════════════════════════════════════ */
+/* Header button that opens the view (sits next to the close button) */
+.vista-history-btn {
+  width: 28px; height: 28px; flex-shrink: 0;
+  border-radius: 8px;
+  border: 1px solid var(--v-border);
+  color: var(--v-muted);
+  display: flex; align-items: center; justify-content: center;
+  transition: all .15s;
+}
+.vista-history-btn svg { width: 15px; height: 15px; }
+.vista-history-btn:hover { color: var(--v-blue); border-color: var(--v-blue-border); background: var(--v-blue-dim); }
+
+.vista-ph { animation: vista-step-in .24s var(--v-ease); }
+.vista-ph-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 14px;
+}
+.vista-ph-back {
+  font-size: 11.5px; font-weight: 600;
+  color: var(--v-purple-2);
+  padding: 5px 10px;
+  border-radius: 7px;
+  border: 1px solid var(--v-purple-glow);
+  background: var(--v-purple-dim);
+  transition: background .15s;
+}
+.vista-ph-back:hover { background: var(--v-purple-glow); }
+.vista-ph-count { font-size: 11px; color: var(--v-muted); }
+
+.vista-ph-list { display: flex; flex-direction: column; gap: 9px; }
+.vista-ph-item {
+  border: 1px solid var(--v-border);
+  border-radius: var(--v-radius-sm);
+  background: var(--v-surface-2);
+  padding: 11px 12px;
+  animation: vista-step-in .3s var(--v-ease) backwards;
+}
+.vista-ph-row1 {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  margin-bottom: 7px;
+}
+.vista-ph-badge {
+  font-size: 9.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  padding: 3px 8px; border-radius: 20px;
+  border: 1px solid var(--v-border-2);
+  white-space: nowrap;
+}
+.vista-ph-muted { color: var(--v-muted); background: var(--v-surface-3); border-color: var(--v-border-2); }
+.vista-ph-amber { color: var(--v-amber); background: rgba(245,158,11,.12); border-color: rgba(245,158,11,.35); }
+.vista-ph-blue  { color: var(--v-blue);  background: var(--v-blue-dim);  border-color: var(--v-blue-border); }
+.vista-ph-green { color: var(--v-green); background: var(--v-green-dim); border-color: var(--v-green-border); }
+.vista-ph-red   { color: var(--v-red);   background: var(--v-red-dim);   border-color: var(--v-red-dim); }
+.vista-ph-when { font-size: 10.5px; color: var(--v-muted); white-space: nowrap; }
+.vista-ph-text {
+  font-size: 12px; line-height: 1.5; color: var(--v-text);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.vista-ph-link {
+  display: inline-block; margin-top: 8px;
+  font-size: 11px; font-weight: 600; color: var(--v-blue); text-decoration: none;
+}
+.vista-ph-link:hover { text-decoration: underline; }
+
+.vista-ph-empty { text-align: center; padding: 30px 16px; }
+.vista-ph-empty-emoji { font-size: 34px; margin-bottom: 12px; }
+.vista-ph-empty p { font-size: 13px; font-weight: 600; color: var(--v-text); }
+.vista-ph-empty small { display: block; margin-top: 5px; font-size: 11.5px; color: var(--v-muted); }
+
+/* ══════════════════════════════════════════════════════════════════════════
    INLINE MODE (Vortex profile "Upload Tab" embed)
    ══════════════════════════════════════════════════════════════════════════ */
 .vista-root[data-mode="inline"] .vista-fab { display: none; }

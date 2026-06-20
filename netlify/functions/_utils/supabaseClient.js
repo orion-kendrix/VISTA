@@ -100,6 +100,21 @@ export async function getDuePosts(limit = 5) {
   return check(res, 'get due posts');
 }
 
+/**
+ * Widget "My Posts" read: a user's own posts, newest first. Selects only
+ * display-safe columns (never access_token or approval_token) and is always
+ * scoped to one user_id, so a session can only ever see its owner's history.
+ */
+export async function listPostsByUser(userId, limit = 25) {
+  const res = await getClient()
+    .from('post_queue')
+    .select('id, post_text, status, scheduled_at, published_at, linkedin_post_id, created_at')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  return check(res, 'list posts by user');
+}
+
 /** approve.js read: fetch a post by its approval token for publish-on-approval. */
 export async function getPostByApprovalToken(token) {
   const res = await getClient()

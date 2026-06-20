@@ -9,6 +9,7 @@ import { createStep1Upload } from './steps/Step1Upload.js';
 import { createStep2Questions } from './steps/Step2Questions.js';
 import { createStep3Preview } from './steps/Step3Preview.js';
 import { createStep4Settings } from './steps/Step4Settings.js';
+import { createPostHistory } from './PostHistory.js';
 
 const STEP_ORDER = [STEPS.UPLOAD, STEPS.QUESTIONS, STEPS.PREVIEW, STEPS.SETTINGS];
 const STEP_LABELS = { upload: 'Upload', questions: 'Questions', preview: 'Preview', settings: 'Schedule' };
@@ -153,6 +154,22 @@ export function createMultiStepForm({ onSubtitleChange } = {}) {
     body.appendChild(wrap);
   }
 
+  // ── My Posts (side view, reachable from the header at any time) ──────────
+  function showPosts() {
+    stepper.style.display = 'none';
+    onSubtitleChange?.('My posts');
+    body.innerHTML = '';
+    const view = createPostHistory({ onBack: showFlow });
+    body.appendChild(view.el);
+    body.scrollTop = 0;
+  }
+
+  // Return from a side view (My Posts) to the step the user was on.
+  function showFlow() {
+    stepper.style.display = '';
+    render();
+  }
+
   // ── Reset everything for a fresh run ─────────────────────────────────────
   function reset() {
     setState({
@@ -178,7 +195,7 @@ export function createMultiStepForm({ onSubtitleChange } = {}) {
   }
 
   render();
-  return { el, reset };
+  return { el, reset, showPosts, showFlow };
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
