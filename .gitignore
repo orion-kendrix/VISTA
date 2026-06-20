@@ -2,6 +2,10 @@
 .env
 .env.local
 
+# Local clone of the CodeVortex website (separate repo, has its own secrets) —
+# must never be committed into this public repo.
+website/
+
 # Dependencies
 node_modules/
 
