@@ -91,17 +91,15 @@ const MOCK_QUESTIONS = [
   "What is one thing you wish you had known before starting this certification journey?",
 ];
 
-const MOCK_POST_DRAFT = `Thrilled to share that I've just earned my AWS Solutions Architect certification! 🎯
+const MOCK_POST_DRAFT = `Subnets and route tables never clicked for me — until I built a small three-tier app on AWS and broke it a few times on purpose. That's when the networking section of the Solutions Architect exam finally made sense.
 
-This journey wasn't easy — three months of early mornings and weekend study sessions. But every moment was worth it.
+It took about four months of studying after work. The practice exams got me to pass, but the hands-on project is what actually made it stick.
 
-What I learned goes far beyond cloud architecture. I learned how to break down complex problems, stay consistent when progress feels invisible, and trust the process.
+I'm a backend dev and we're migrating our monolith to AWS this year, so this is what I'll be doing day to day now — designing for multi-AZ failover, picking storage classes for cost, not just memorising the diagrams.
 
-If you're considering this certification, here's my advice: start before you feel ready. The learning happens in the doing.
+One thing I underestimated: the exam cares about cost trade-offs as much as architecture. If you're preparing, don't under-study billing like I did.
 
-Grateful for everyone who supported me along the way. This is just the beginning. 🚀
-
-#AWS #CloudComputing #Certification #Growth #TechCareer`;
+#AWS #CloudArchitecture #BackendDevelopment #Certification #LearningByBuilding`;
 
 const MOCK_POSTS = [
   {

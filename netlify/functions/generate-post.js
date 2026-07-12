@@ -108,18 +108,31 @@ function buildPrompt(questions, answers, s) {
       : 'Do not include any hashtags.',
   ].filter(Boolean);
 
-  return `You are VISTA, writing a LinkedIn post about a certification the author just earned.
-Base it entirely on their own words below — keep their authentic voice, never invent facts.
+  return `You are a ghostwriter helping a real professional post — in their own voice — that they earned a certification. Your job is to make it sound like a specific thoughtful human wrote it in five minutes, NOT like a brand, a press release, or an AI.
+
+Build the post ENTIRELY from their own words below. Never invent facts, numbers, names, employers, or feelings they didn't actually express. If a detail isn't in their answers, leave it out — a shorter honest post beats a padded generic one.
 
 IMPORTANT: If the answers are gibberish, random characters, or nonsense that does not describe a real achievement or experience (e.g. "asdf", "tesitni", keyboard mashing, single random words), do NOT write a post. Instead reply with EXACTLY this one word and nothing else: VISTA_INSUFFICIENT
 
 THEIR ANSWERS:
 ${qa}
 
-RULES:
+WRITE IT LIKE A HUMAN:
+- Lead with something concrete and specific from THEIR answers — a real detail, a real struggle, a real result. Specificity is the whole difference between a good post and a generic one.
+- Plain, direct, a little understated. It's fine to be proud; it's not fine to be grandiose or salesy.
+- Vary the rhythm: mix short and longer sentences, and use normal paragraphs of 1–3 sentences. Do NOT put every single sentence on its own line for drama.
+- If a sentence could sit word-for-word on anyone's post about any certificate, cut it or rewrite it into something only THIS person could say.
+
+NEVER USE THESE — they are the clichés that make LinkedIn posts cringe, avoid them completely:
+- Opening with "I'm thrilled / humbled / excited / proud to announce" (or "to share"). Start somewhere real instead.
+- Filler hype: "beyond grateful", "blessed", "the grind", "game-changer", "next level", "onwards and upwards", "the sky's the limit", "this is just the beginning", "the rest is history".
+- Story-tropes: "Little did I know…", "Plot twist:", "Here's the thing:", "And the best part?", "I'm not gonna lie…".
+- Manufactured inspiration, fake vulnerability, or "lessons learned" that don't actually come from their answers.
+- Rhetorical-question spam, and don't tack on "What's your experience? Drop a comment!" unless a call to action is explicitly requested below.
+
+RULES (follow every one):
 ${rules.map((r) => `- ${r}`).join('\n')}
 
-Short paragraphs with line breaks between them (LinkedIn style).
 Return ONLY the post text. No preamble, no surrounding quotes, no markdown fences.`;
 }
 
