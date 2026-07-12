@@ -24,7 +24,7 @@ function liHeaders(accessToken) {
     Authorization: `Bearer ${accessToken}`,
     'Content-Type': 'application/json',
     // Pinned per env so a LinkedIn version sunset is a config change, not a code change.
-    'LinkedIn-Version': process.env.LINKEDIN_VERSION || '202506',
+    'LinkedIn-Version': process.env.LINKEDIN_VERSION || '202606',
     'X-Restli-Protocol-Version': '2.0.0',
   };
 }
