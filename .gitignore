@@ -6,6 +6,9 @@
 # must never be committed into this public repo.
 website/
 
+# Local design mockups / exploration scratch (not part of the shipped widget).
+design-preview/
+
 # Dependencies
 node_modules/
 
