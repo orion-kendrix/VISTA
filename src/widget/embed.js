@@ -54,9 +54,26 @@
   var mode = script.dataset.mode === 'inline' ? 'inline' : 'fab';
   var container = script.dataset.container || null;
 
+  // Optional host-brand theming. Anything set here overrides the widget's
+  // default palette; anything left unset keeps the VISTA defaults. Two sources
+  // are merged, with the script's data-* attributes winning over the global:
+  //   window.VISTA_THEME = { accent, accent2, radius, font }
+  //   <script … data-accent="#e11d48" data-accent2="#f59e0b" data-radius="12px" data-font="Inter">
+  var theme = {};
+  if (window.VISTA_THEME && typeof window.VISTA_THEME === 'object') {
+    theme.accent = window.VISTA_THEME.accent;
+    theme.accent2 = window.VISTA_THEME.accent2;
+    theme.radius = window.VISTA_THEME.radius;
+    theme.font = window.VISTA_THEME.font;
+  }
+  if (script.dataset.accent) theme.accent = script.dataset.accent;
+  if (script.dataset.accent2) theme.accent2 = script.dataset.accent2;
+  if (script.dataset.radius) theme.radius = script.dataset.radius;
+  if (script.dataset.font) theme.font = script.dataset.font;
+
   function mount() {
     import(base + 'FABWidget.js')
-      .then(function (m) { m.initVistaWidget({ mode: mode, container: container }); })
+      .then(function (m) { m.initVistaWidget({ mode: mode, container: container, theme: theme }); })
       .catch(function (err) { console.error('[VISTA] Failed to load widget modules:', err); });
   }
 

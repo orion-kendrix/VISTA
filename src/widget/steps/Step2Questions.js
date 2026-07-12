@@ -29,7 +29,7 @@ export function createStep2Questions(ctx) {
         <button class="vista-btn vista-btn-secondary" data-slot="back">←</button>
         <button class="vista-btn vista-btn-primary" data-slot="next">Generate post →</button>
       </div>
-      <p class="vista-hint">Answer at least ${MIN_ANSWERS} with real detail — random text won't make a good post</p>`;
+      <p class="vista-hint">Answer at least ${MIN_ANSWERS} with real detail — tap <b>✎ Edit</b> to reword any question that doesn't fit</p>`;
 
     const cards = el.querySelector('[data-slot="cards"]');
     questions.forEach((q, i) => {
@@ -39,11 +39,13 @@ export function createStep2Questions(ctx) {
       card.innerHTML = `
         <div class="vista-qhead">
           <span class="vista-qnum">${i + 1}</span><span>Question ${i + 1}</span>
+          <button type="button" class="vista-qedit" data-slot="edit" aria-label="Edit question ${i + 1}">✎ Edit</button>
         </div>
-        <p class="vista-qtext">${escapeHtml(q)}</p>
-        <textarea rows="2" placeholder="Share your answer…">${escapeHtml(ctx.state.answers[i] || '')}</textarea>
+        <p class="vista-qtext" data-slot="qtext">${escapeHtml(q)}</p>
+        <textarea data-slot="answer" rows="2" placeholder="Share your answer…">${escapeHtml(ctx.state.answers[i] || '')}</textarea>
         <small class="vista-qhint">A bit more detail, please — random text won't make a good post.</small>`;
-      const ta = card.querySelector('textarea');
+      const ta = card.querySelector('[data-slot="answer"]');
+      card.querySelector('[data-slot="edit"]').addEventListener('click', () => beginEditQuestion(card, i));
       const reflect = (val) => {
         const t = val.trim();
         const ok = isSubstantive(t);
@@ -88,6 +90,42 @@ export function createStep2Questions(ctx) {
     if (fill) fill.style.width = `${(answered / 5) * 100}%`;
     if (count) count.textContent = `${answered} of 5 with detail`;
     if (next) next.disabled = answered < MIN_ANSWERS;
+  }
+
+  // Swap a question's text for an inline editor so the user can reword an AI
+  // question that doesn't quite fit before answering it. The edit is written
+  // straight into ctx.state.questions[i], so generate-post sees the new wording
+  // and the change survives re-renders (returning from Preview, etc.).
+  function beginEditQuestion(card, i) {
+    const current = card.querySelector('[data-slot="qtext"]');
+    if (!current || current.tagName === 'TEXTAREA') return; // already editing
+    const prev = ctx.state.questions[i];
+
+    const box = document.createElement('textarea');
+    box.className = 'vista-qedit-box';
+    box.dataset.slot = 'qtext';
+    box.value = prev;
+    current.replaceWith(box);
+
+    const grow = () => { box.style.height = 'auto'; box.style.height = box.scrollHeight + 'px'; };
+    grow();
+    box.focus();
+    box.setSelectionRange(box.value.length, box.value.length);
+
+    box.addEventListener('input', () => { grow(); ctx.state.questions[i] = box.value; });
+    box.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); box.blur(); }
+      else if (e.key === 'Escape') { ctx.state.questions[i] = prev; box.value = prev; box.blur(); }
+    });
+    box.addEventListener('blur', () => {
+      const val = box.value.trim() || prev; // never let a question become empty
+      ctx.state.questions[i] = val;
+      const p = document.createElement('p');
+      p.className = 'vista-qtext';
+      p.dataset.slot = 'qtext';
+      p.textContent = val;
+      box.replaceWith(p);
+    });
   }
 
   function renderSkeleton() {

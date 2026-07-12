@@ -45,6 +45,14 @@ export function initVistaWidget(options = {}) {
   root.className = 'vista-root';
   root.dataset.mode = mode;
 
+  // Host-brand theming (optional). Only ever sets CSS custom properties on the
+  // widget root, so a bad value can at worst fail to apply — never break out.
+  try {
+    applyTheme(root, options.theme);
+  } catch (err) {
+    console.warn('[VISTA] Theme could not be applied — using defaults:', err);
+  }
+
   // ── Panel shell ─────────────────────────────────────────────────────────
   const panel = document.createElement('div');
   panel.className = 'vista-panel';
@@ -156,4 +164,83 @@ export function initVistaWidget(options = {}) {
       root.remove();
     },
   };
+}
+
+// ── Host-brand theming ───────────────────────────────────────────────────────
+// Recolour the whole widget by overriding the palette tokens (widget.css) on
+// the root element. Every component reads var(--v-*), so setting them here
+// cascades everywhere. Hex accents give the best result (we can derive the
+// tint/glow/gradient stops); rgb()/hsl() are accepted but only recolour the
+// solid tokens. Unset or invalid values fall through to the defaults.
+function applyTheme(root, theme) {
+  if (!theme || typeof theme !== 'object') return;
+
+  const accent = safeColor(theme.accent);
+  const accent2 = safeColor(theme.accent2) || accent;
+
+  if (accent) {
+    root.style.setProperty('--v-purple', accent);
+    const lift = lighten(accent, 0.35);
+    if (lift) root.style.setProperty('--v-purple-2', lift);
+    const rgb = hexToRgb(accent);
+    if (rgb) {
+      root.style.setProperty('--v-purple-dim', `rgba(${rgb}, 0.16)`);
+      root.style.setProperty('--v-purple-glow', `rgba(${rgb}, 0.45)`);
+    }
+  }
+  if (accent2) root.style.setProperty('--v-blue', accent2);
+
+  if (accent || accent2) {
+    const g1 = accent || accent2;
+    const g2 = accent2 || accent;
+    root.style.setProperty('--v-grad', `linear-gradient(135deg, ${g1}, ${g2})`);
+    const r1 = hexToRgb(g1);
+    const r2 = hexToRgb(g2);
+    if (r1 && r2) {
+      root.style.setProperty('--v-grad-soft', `linear-gradient(135deg, rgba(${r1},.55), rgba(${r2},.30))`);
+    }
+  }
+
+  if (theme.radius && /^\d{1,3}(px|rem|em)$/.test(String(theme.radius).trim())) {
+    root.style.setProperty('--v-radius', String(theme.radius).trim());
+  }
+  if (typeof theme.font === 'string' && /^[\w\s,'"-]{1,120}$/.test(theme.font)) {
+    root.style.setProperty(
+      '--v-font',
+      `${theme.font}, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif`
+    );
+  }
+}
+
+// Accept only shapes we know are safe as a CSS value (custom props can't run
+// script, but validating keeps a typo from silently mangling the palette).
+function safeColor(c) {
+  if (typeof c !== 'string') return null;
+  const v = c.trim();
+  if (/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v)) return v;
+  if (/^rgb\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*\)$/i.test(v)) return v;
+  if (/^hsl\(\s*\d{1,3}\s*,\s*\d{1,3}%\s*,\s*\d{1,3}%\s*\)$/i.test(v)) return v;
+  return null;
+}
+
+function hexToRgb(hex) {
+  const m = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(hex || '');
+  if (!m) return null;
+  let h = m[1];
+  if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+  const n = parseInt(h, 16);
+  return `${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}`;
+}
+
+function lighten(hex, amt) {
+  const m = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(hex || '');
+  if (!m) return null;
+  let h = m[1];
+  if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+  const n = parseInt(h, 16);
+  let r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  r = Math.round(r + (255 - r) * amt);
+  g = Math.round(g + (255 - g) * amt);
+  b = Math.round(b + (255 - b) * amt);
+  return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
 }
