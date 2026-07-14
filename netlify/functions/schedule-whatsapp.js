@@ -14,7 +14,7 @@ import { preflight, json, readJson } from './_utils/http.js';
 import { requireSession, randomToken } from './_utils/tokenSecurity.js';
 import {
   insertPost, insertQuestionnaire, setPostImageUrl,
-  updateUserWhatsapp, uploadCertificateImage,
+  updateUserWhatsapp, uploadCertificateImage, findPostNear,
 } from './_utils/supabaseClient.js';
 import { sendApprovalEmail, emailConfigured } from './_utils/emailClient.js';
 
@@ -40,10 +40,29 @@ export default async (req) => {
     if (p.whatsappNumber && !/^\+\d{8,15}$/.test(p.whatsappNumber)) {
       return json(400, { error: 'whatsappNumber must be E.164, e.g. +919876543210' }, req);
     }
-    const scheduledAt = new Date(p.scheduledAt);
+    let scheduledAt = new Date(p.scheduledAt);
     if (isNaN(scheduledAt) || scheduledAt < new Date()) {
       return json(400, { error: 'scheduledAt must be a valid future datetime' }, req);
     }
+
+    // ── Guardrails: per-user spacing + publish-time jitter ──────────────────
+    // Rapid-fire API posts are the automation fingerprint that got an account
+    // flagged (posts accepted but never displayed). Keep every account's
+    // posts spaced apart, and never publish on a suspiciously round minute.
+    const gapHours = Number(process.env.MIN_POST_GAP_HOURS) || 20;
+    const nearby = await findPostNear(userId, scheduledAt.toISOString(), gapHours);
+    if (nearby) {
+      const nextFree = new Date(new Date(nearby.scheduled_at).getTime() + gapHours * 3600 * 1000);
+      const when = nextFree.toLocaleString('en-IN', {
+        day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata',
+      });
+      return json(429, {
+        error: `To keep your account under LinkedIn's automation radar, VISTA spaces posts at least ${gapHours} hours apart — pick a slot after ${when} IST.`,
+      }, req);
+    }
+    // 1-5 min of random jitter so publishes never land exactly on the chosen
+    // minute (the scheduler's 5-min cron already blurs this further).
+    scheduledAt = new Date(scheduledAt.getTime() + (60 + Math.floor(Math.random() * 240)) * 1000);
 
     // ── Persist ─────────────────────────────────────────────────────────────
     if (p.whatsappNumber) await updateUserWhatsapp(userId, p.whatsappNumber);

@@ -110,6 +110,26 @@ export async function publishPost({ accessToken, personUrn, text, imageUrl }) {
   return res.headers.get('x-restli-id') || 'published';
 }
 
+/**
+ * Suppression detection: fetch the just-published post back. LinkedIn
+ * sometimes accepts an API post (returns a share URN) but never displays it
+ * ("This post cannot be displayed") — a suppressed/deleted post reads back
+ * 404/410. Returns true (visible), false (suppressed), or null (couldn't
+ * tell — e.g. transient 5xx). Never throw-worthy for the caller.
+ */
+export async function checkPostVisibility(accessToken, postId) {
+  if (!postId || postId === 'published') return null;
+  const res = await fetch(`${API}/rest/posts/${encodeURIComponent(postId)}`, {
+    headers: liHeaders(accessToken),
+  });
+  if (res.ok) {
+    const data = await res.json().catch(() => null);
+    return data?.lifecycleState ? data.lifecycleState === 'PUBLISHED' : true;
+  }
+  if (res.status === 404 || res.status === 410) return false;
+  return null;
+}
+
 /** initializeUpload → PUT binary → returns urn:li:image:… */
 async function uploadImage(accessToken, personUrn, imageUrl) {
   const init = await fetch(`${API}/rest/images?action=initializeUpload`, {

@@ -115,6 +115,47 @@ export async function listPostsByUser(userId, limit = 25) {
   return check(res, 'list posts by user');
 }
 
+/**
+ * Guardrail read (posting spacing): the user's nearest post — in any state
+ * that will/did reach LinkedIn — within ±windowHours of a requested slot.
+ */
+export async function findPostNear(userId, aroundIso, windowHours) {
+  const around = new Date(aroundIso).getTime();
+  const from = new Date(around - windowHours * 3600 * 1000).toISOString();
+  const to = new Date(around + windowHours * 3600 * 1000).toISOString();
+  const res = await getClient()
+    .from('post_queue')
+    .select('id, scheduled_at, status')
+    .eq('user_id', userId)
+    .in('status', ['pending_approval', 'approved', 'processing', 'published'])
+    .gte('scheduled_at', from)
+    .lte('scheduled_at', to)
+    .order('scheduled_at', { ascending: false })
+    .limit(1);
+  const rows = check(res, 'find post near slot');
+  return rows?.[0] ?? null;
+}
+
+/**
+ * Guardrail write (suppression detection): stash the post-publish display
+ * check inside micro_settings — the schema is frozen (R3), and micro_settings
+ * is schemaless JSONB precisely so additions never need a migration.
+ */
+export async function recordDisplayCheck(postId, displayCheck) {
+  const cur = await getClient()
+    .from('post_queue')
+    .select('micro_settings')
+    .eq('id', postId)
+    .single();
+  const settings = { ...(check(cur, 'read micro_settings')?.micro_settings ?? {}), displayCheck };
+  const res = await getClient()
+    .from('post_queue')
+    .update({ micro_settings: settings })
+    .eq('id', postId)
+    .select('id');
+  check(res, 'record display check');
+}
+
 /** approve.js read: fetch a post by its approval token for publish-on-approval. */
 export async function getPostByApprovalToken(token) {
   const res = await getClient()

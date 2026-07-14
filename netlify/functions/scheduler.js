@@ -12,9 +12,9 @@
 
 import { preflight, json } from './_utils/http.js';
 import {
-  getDuePosts, claimPost, getUser, markPublished, markFailed,
+  getDuePosts, claimPost, getUser, markPublished, markFailed, recordDisplayCheck,
 } from './_utils/supabaseClient.js';
-import { publishPost } from './_utils/linkedinClient.js';
+import { publishPost, checkPostVisibility } from './_utils/linkedinClient.js';
 
 const BATCH_LIMIT = 5;
 
@@ -61,7 +61,22 @@ export default async (req) => {
         });
 
         await markPublished(post.id, linkedinPostId);
-        results.published.push(post.id);
+
+        // Suppression detection: read the post back and record whether
+        // LinkedIn actually displays it. Informational only — never fails
+        // the publish (the post IS published; visibility is LinkedIn's call).
+        let displayed = null;
+        try {
+          displayed = await checkPostVisibility(user.access_token, linkedinPostId);
+          await recordDisplayCheck(post.id, { at: new Date().toISOString(), displayed });
+          if (displayed === false) {
+            console.warn(`[scheduler] post ${post.id} was accepted but is NOT visible — likely suppression on this account`);
+          }
+        } catch (checkErr) {
+          console.error(`[scheduler] display check for ${post.id} failed (ignored):`, checkErr);
+        }
+
+        results.published.push({ id: post.id, displayed });
       } catch (err) {
         console.error(`[scheduler] post ${post.id} failed:`, err);
         try {
