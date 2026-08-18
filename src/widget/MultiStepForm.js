@@ -24,6 +24,7 @@ export function createMultiStepForm({ onSubtitleChange } = {}) {
     answers: ['', '', '', '', ''],
     postText: '',
     postStale: false,       // true when settings changed after generation
+    answersDirty: false,    // true when answers/questions changed after generation
     microSettings: { ...MICRO_SETTINGS_DEFAULTS },
     whatsappCc: '+91',
     whatsappNumber: '',
@@ -35,6 +36,11 @@ export function createMultiStepForm({ onSubtitleChange } = {}) {
   };
 
   function setState(patch) { Object.assign(state, patch); }
+
+  // Held so returning from a side view (My Posts) restores the receipt instead
+  // of dropping the user back on a live Schedule step, where "Send for
+  // approval" would queue the very same post a second time.
+  let lastSuccess = null;
 
   // ── Shell DOM ────────────────────────────────────────────────────────────
   const el = document.createElement('div');
@@ -57,6 +63,7 @@ export function createMultiStepForm({ onSubtitleChange } = {}) {
     if (idx < 0) return;
     // Forward jumps beyond the next unreached step are blocked; back-nav free.
     if (idx > state.maxReachedIndex + 1) return;
+    lastSuccess = null; // stepping back into the flow retires the receipt
     state.step = stepId;
     state.maxReachedIndex = Math.max(state.maxReachedIndex, idx);
     render();
@@ -117,6 +124,7 @@ export function createMultiStepForm({ onSubtitleChange } = {}) {
 
   // ── Success (terminal view after schedulePost succeeds) ─────────────────
   function showSuccess(result) {
+    lastSuccess = result;
     stepper.style.display = 'none';
     onSubtitleChange?.('Scheduled');
     body.innerHTML = '';
@@ -164,8 +172,13 @@ export function createMultiStepForm({ onSubtitleChange } = {}) {
     body.scrollTop = 0;
   }
 
-  // Return from a side view (My Posts) to the step the user was on.
+  // Return from a side view (My Posts) to whatever was on screen before it —
+  // the success receipt if the post was already scheduled, else the live step.
   function showFlow() {
+    if (lastSuccess) {
+      showSuccess(lastSuccess);
+      return;
+    }
     stepper.style.display = '';
     render();
   }
@@ -180,6 +193,7 @@ export function createMultiStepForm({ onSubtitleChange } = {}) {
       answers: ['', '', '', '', ''],
       postText: '',
       postStale: false,
+      answersDirty: false,
       microSettings: { ...MICRO_SETTINGS_DEFAULTS },
       whatsappCc: '+91',
       whatsappNumber: '',
@@ -190,6 +204,7 @@ export function createMultiStepForm({ onSubtitleChange } = {}) {
       scheduledAt: defaultScheduleISO(),
     });
     Object.values(steps).forEach((s) => s.onReset?.());
+    lastSuccess = null;
     stepper.style.display = '';
     render();
   }

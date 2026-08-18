@@ -61,13 +61,21 @@ export function createStep3Preview(ctx) {
     ta.value = ctx.state.postText;
 
     el.querySelector('[data-slot="edit"]').addEventListener('click', toggleEdit);
-    el.querySelector('[data-slot="back"]').addEventListener('click', ctx.goBack);
+    el.querySelector('[data-slot="back"]').addEventListener('click', () => {
+      commitEdits();
+      ctx.goBack();
+    });
     el.querySelector('[data-slot="next"]').addEventListener('click', () => {
       commitEdits();
       ctx.goNext();
     });
     el.querySelector('[data-slot="copy"]').addEventListener('click', copyPost);
-    ta.addEventListener('input', updateCount);
+    // Commit as they type: the stepper pills navigate away without going
+    // through the buttons below, so state must never lag the textarea.
+    ta.addEventListener('input', () => {
+      commitEdits();
+      updateCount();
+    });
     updateCount();
   }
 
@@ -164,7 +172,7 @@ export function createStep3Preview(ctx) {
       const { questions, answers, microSettings } = ctx.state;
       const { postText } = await generatePost(questions, answers, microSettings);
       if (!postText || typeof postText !== 'string') throw new Error('Empty post returned.');
-      ctx.setState({ postText, postStale: false });
+      ctx.setState({ postText, postStale: false, answersDirty: false });
       loading = false;
       clearInterval(thinkTimer);
       render();
@@ -180,7 +188,10 @@ export function createStep3Preview(ctx) {
   return {
     el,
     onEnter() {
-      ctx.state.postText ? render() : fetchPost();
+      // Re-generate when there is no draft yet, or when the answers/questions
+      // the draft was built from have since been edited — Step 2's button says
+      // "Generate post", so a changed answer must actually change the post.
+      (!ctx.state.postText || ctx.state.answersDirty) ? fetchPost() : render();
     },
     onReset() {
       loading = false; editing = false;

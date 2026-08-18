@@ -54,6 +54,7 @@ export function createStep2Questions(ctx) {
       };
       ta.addEventListener('input', () => {
         ctx.state.answers[i] = ta.value;
+        markDraftStale();
         ta.style.height = 'auto';                 // auto-grow
         ta.style.height = ta.scrollHeight + 'px';
         reflect(ta.value);
@@ -78,6 +79,13 @@ export function createStep2Questions(ctx) {
         }
       });
     });
+  }
+
+  // Any edit to the source material invalidates a draft generated from the old
+  // version — Step 3 re-generates on entry instead of silently showing the
+  // post built from the answers the user just changed.
+  function markDraftStale() {
+    if (ctx.state.postText) ctx.setState({ answersDirty: true });
   }
 
   function updateProgress() {
@@ -112,7 +120,11 @@ export function createStep2Questions(ctx) {
     box.focus();
     box.setSelectionRange(box.value.length, box.value.length);
 
-    box.addEventListener('input', () => { grow(); ctx.state.questions[i] = box.value; });
+    box.addEventListener('input', () => {
+      grow();
+      ctx.state.questions[i] = box.value;
+      markDraftStale();
+    });
     box.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); box.blur(); }
       else if (e.key === 'Escape') { ctx.state.questions[i] = prev; box.value = prev; box.blur(); }
@@ -120,6 +132,7 @@ export function createStep2Questions(ctx) {
     box.addEventListener('blur', () => {
       const val = box.value.trim() || prev; // never let a question become empty
       ctx.state.questions[i] = val;
+      if (val !== prev) markDraftStale();
       const p = document.createElement('p');
       p.className = 'vista-qtext';
       p.dataset.slot = 'qtext';

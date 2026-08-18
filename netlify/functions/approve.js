@@ -7,8 +7,9 @@
 
 import {
   getClient, getPostByApprovalToken, claimPost, getUser, markPublished, markFailed,
+  recordDisplayCheck,
 } from './_utils/supabaseClient.js';
-import { publishPost } from './_utils/linkedinClient.js';
+import { publishPost, checkPostVisibility } from './_utils/linkedinClient.js';
 import { html } from './_utils/http.js';
 
 export default async (req) => {
@@ -93,6 +94,20 @@ async function maybePublishNow(token) {
       imageUrl: post.image_url,
     });
     await markPublished(post.id, linkedinPostId);
+
+    // Same suppression detection the scheduler runs. This path publishes most
+    // posts (approval usually arrives after the slot), so without it the check
+    // would almost never fire. Informational only — never fails the publish.
+    try {
+      const displayed = await checkPostVisibility(user.access_token, linkedinPostId);
+      await recordDisplayCheck(post.id, { at: new Date().toISOString(), displayed });
+      if (displayed === false) {
+        console.warn(`[approve] post ${post.id} was accepted but is NOT visible — likely suppression on this account`);
+      }
+    } catch (checkErr) {
+      console.error(`[approve] display check for ${post.id} failed (ignored):`, checkErr);
+    }
+
     return 'published';
   } catch (err) {
     console.error(`[approve] publish failed for ${post.id}:`, err);

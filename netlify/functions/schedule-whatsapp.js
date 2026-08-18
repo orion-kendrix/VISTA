@@ -65,7 +65,14 @@ export default async (req) => {
     scheduledAt = new Date(scheduledAt.getTime() + (60 + Math.floor(Math.random() * 240)) * 1000);
 
     // ── Persist ─────────────────────────────────────────────────────────────
-    if (p.whatsappNumber) await updateUserWhatsapp(userId, p.whatsappNumber);
+    if (p.whatsappNumber) {
+      try {
+        await updateUserWhatsapp(userId, p.whatsappNumber);
+      } catch (err) {
+        // Legacy optional channel — never let it fail the post itself.
+        console.error('[schedule-whatsapp] could not save whatsapp number (continuing):', err);
+      }
+    }
 
     const approvalToken = randomToken();
     const ttlHours = Number(process.env.TOKEN_EXPIRY_HOURS) || 24;
@@ -93,11 +100,20 @@ export default async (req) => {
       }
     }
 
-    await insertQuestionnaire(
-      post.id,
-      Array.isArray(p.questions) ? p.questions : [],
-      Array.isArray(p.answers) ? p.answers : []
-    );
+    // Best-effort, like the image upload above. The questionnaire is a record of
+    // how the post was written — the post itself is already saved. Throwing here
+    // would return a 500 the user reads as "nothing was saved", while the row
+    // stays in pending_approval and then blocks their retry on the spacing
+    // guardrail above for MIN_POST_GAP_HOURS.
+    try {
+      await insertQuestionnaire(
+        post.id,
+        Array.isArray(p.questions) ? p.questions : [],
+        Array.isArray(p.answers) ? p.answers : []
+      );
+    } catch (err) {
+      console.error(`[schedule-whatsapp] questionnaire insert failed for post ${post.id} (continuing):`, err);
+    }
 
     // ── Notify ──────────────────────────────────────────────────────────────
     const appUrl = (process.env.APP_URL || '').replace(/\/$/, '');

@@ -17,6 +17,9 @@ import { generatePost, schedulePost, initiateLinkedInAuth, AuthRequiredError } f
 
 export function createStep4Settings(ctx) {
   const el = document.createElement('div');
+  // Survives the full re-renders below (regenerate, re-entering the step), so
+  // the Fine-tune drawer never snaps shut on the user mid-tweak.
+  let advOpen = false;
 
   function render() {
     const s = ctx.state.microSettings;
@@ -51,14 +54,15 @@ export function createStep4Settings(ctx) {
     // ── Fine-tune (collapsible) ─────────────────────────────────────────────
     const adv = document.createElement('div');
     adv.className = 'vista-collapse';
-    adv.dataset.open = 'false';
+    adv.dataset.open = String(advOpen);
     adv.innerHTML = `
       <button type="button" class="vista-collapse-head">
         <span>Fine-tune (hook, emoji, audience…)</span><span class="vista-caret">▼</span>
       </button>
       <div class="vista-collapse-body"></div>`;
     adv.querySelector('.vista-collapse-head').addEventListener('click', () => {
-      adv.dataset.open = adv.dataset.open === 'true' ? 'false' : 'true';
+      advOpen = !advOpen;
+      adv.dataset.open = String(advOpen);
     });
     const advBody = adv.querySelector('.vista-collapse-body');
     advBody.appendChild(chipGroup('Hook style', HOOK_STYLE_OPTIONS, s[K.HOOK_STYLE], (v) => pick(K.HOOK_STYLE, v)));
@@ -109,11 +113,11 @@ export function createStep4Settings(ctx) {
   }
 
   // Settings changes after generation make the draft stale — visibly, never silently.
+  // No re-render here: chips and switches update their own selected state, so a
+  // tweak can't collapse the Fine-tune drawer or throw away the scroll position.
   function pick(key, value, opts = {}) {
     ctx.state.microSettings[key] = value;
     if (!opts.quiet) markStale();
-    // chips re-render for selection state; quiet inputs (text/slider) don't
-    if (!opts.quiet) render();
   }
   function markStale() {
     if (ctx.state.postText) {
@@ -129,7 +133,7 @@ export function createStep4Settings(ctx) {
     try {
       const { questions, answers, microSettings } = ctx.state;
       const { postText } = await generatePost(questions, answers, microSettings);
-      ctx.setState({ postText, postStale: false });
+      ctx.setState({ postText, postStale: false, answersDirty: false });
       render();
     } catch (err) {
       console.error('[VISTA] regenerate failed:', err);
@@ -250,7 +254,12 @@ export function createStep4Settings(ctx) {
       chip.type = 'button';
       chip.className = 'vista-chip' + (opt === current ? ' vista-on' : '');
       chip.textContent = labelMap[opt] || pretty(opt);
-      chip.addEventListener('click', () => onPick(opt));
+      chip.addEventListener('click', () => {
+        // Move the selection within this group only — no full re-render.
+        wrap.querySelectorAll('.vista-chip').forEach((c) => c.classList.remove('vista-on'));
+        chip.classList.add('vista-on');
+        onPick(opt);
+      });
       wrap.appendChild(chip);
     });
     f.appendChild(wrap);
